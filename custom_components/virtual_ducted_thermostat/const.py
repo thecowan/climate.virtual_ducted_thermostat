@@ -1,4 +1,4 @@
-"""Programmable thermostat's constant """
+"""VirtualDucted thermostat's constant """
 from homeassistant.components.climate.const import (
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
@@ -15,7 +15,7 @@ CONFIGFLOW_VERSION = 4
 
 #Defaults
 DEFAULT_TOLERANCE = 0.5
-DEFAULT_NAME = 'Programmable Thermostat'
+DEFAULT_NAME = 'VirtualDucted Thermostat'
 DEFAULT_MAX_TEMP = 40
 DEFAULT_MIN_TEMP = 5
 DEFAULT_HVAC_OPTIONS = 7

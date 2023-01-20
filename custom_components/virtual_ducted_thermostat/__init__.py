@@ -14,7 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.helpers import discovery
 from homeassistant.util import Throttle
-from .climate import ProgrammableThermostat
+from .climate import VirtualDuctedThermostat
 from .const import (
     VERSION,
     CONFIGFLOW_VERSION,
@@ -36,7 +36,7 @@ async def async_setup_entry(hass, config_entry):
         hass.async_create_task(hass.config_entries.async_remove(config_entry.entry_id))
         return True
     undo_listener = config_entry.add_update_listener(update_listener)
-    _LOGGER.info("Added new ProgrammableThermostat entity, entry_id: %s", config_entry.entry_id)
+    _LOGGER.info("Added new VirtualDuctedThermostat entity, entry_id: %s", config_entry.entry_id)
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, PLATFORM))
 
     return True

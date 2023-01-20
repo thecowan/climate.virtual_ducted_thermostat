@@ -1,5 +1,5 @@
-""" Configuration flow for the programmable_thermostat integration to allow user
-    to define all programmable_thermostat entities from Lovelace UI."""
+""" Configuration flow for the virtual_ducted_thermostat integration to allow user
+    to define all virtual_ducted_thermostat entities from Lovelace UI."""
 import logging
 from homeassistant.core import callback
 import voluptuous as vol
@@ -43,8 +43,8 @@ _LOGGER = logging.getLogger(__name__)
 #################### CONFIG FLOW ####################
 #####################################################
 @config_entries.HANDLERS.register(DOMAIN)
-class ProgrammableThermostatConfigFlow(config_entries.ConfigFlow):
-    """Programmable Thermostat config flow."""
+class VirtualDuctedThermostatConfigFlow(config_entries.ConfigFlow):
+    """VirtualDucted Thermostat config flow."""
 
     VERSION = CONFIGFLOW_VERSION
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -157,7 +157,7 @@ class ProgrammableThermostatConfigFlow(config_entries.ConfigFlow):
 #################### OPTION FLOW ####################
 #####################################################
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Programmable Thermostat option flow."""
+    """VirtualDucted Thermostat option flow."""
 
     def __init__(self, config_entry):
         """Initialize."""

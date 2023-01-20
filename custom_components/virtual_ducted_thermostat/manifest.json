@@ -8,6 +8,6 @@
   ],
   "codeowners": [],
   "requirements": [],
-  "config_flow": false,
+  "config_flow": true,
   "version": "0.1"
 }

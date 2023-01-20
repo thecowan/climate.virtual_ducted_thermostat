@@ -71,13 +71,13 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(CLIMATE_SCHEMA)
 
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
-    """Add ProgrammableThermostat entities from configuration.yaml."""
+    """Add VirtualDuctedThermostat entities from configuration.yaml."""
     _LOGGER.info("Setup entity coming from configuration.yaml named: %s", config.get(CONF_NAME))
     await async_setup_reload_service(hass, DOMAIN, PLATFORM)
-    async_add_entities([ProgrammableThermostat(hass, config)])
+    async_add_entities([VirtualDuctedThermostat(hass, config)])
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
-    """Add ProgrammableThermostat entities from configuration flow."""
+    """Add VirtualDuctedThermostat entities from configuration flow."""
     result = {}
     if config_entry.options != {}:
         result = config_entry.options
@@ -85,11 +85,11 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
         result = config_entry.data
     _LOGGER.info("setup entity-config_entry_data=%s",result)
     await async_setup_reload_service(hass, DOMAIN, PLATFORM)
-    async_add_devices([ProgrammableThermostat(hass, result)])
+    async_add_devices([VirtualDuctedThermostat(hass, result)])
 
 
-class ProgrammableThermostat(ClimateEntity, RestoreEntity):
-    """ProgrammableThermostat."""
+class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
+    """VirtualDuctedThermostat."""
 
     def __init__(self, hass, config):
 
