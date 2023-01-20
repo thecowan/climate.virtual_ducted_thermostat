@@ -46,7 +46,7 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_MIN_TEMP, default=DEFAULT_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_TOLERANCE, default=DEFAULT_TOLERANCE): vol.Coerce(float),
-    vol.Optional(CONF_CENTRAL_CLIMATE): cv.entity_ids,
+    vol.Required(CONF_CENTRAL_CLIMATE): cv.entity_id,
     vol.Optional(CONF_HVAC_OPTIONS, default=DEFAULT_HVAC_OPTIONS): vol.In(range(MAX_HVAC_OPTIONS)),
     vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
@@ -95,7 +95,7 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         }
     elif config_flow_step==3:
         return {
-            vol.Optional(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
+            vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
             vol.Required(CONF_HVAC_OPTIONS, default=config.get(CONF_HVAC_OPTIONS)):  vol.In(range(MAX_HVAC_OPTIONS)),
             vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS),
@@ -105,7 +105,7 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         #identical to 3 but with CONF_MIN_CYCLE_DURATION converted in string from dict (necessary since it is always set as null if not used)
         #this is used for options flow only
         return {
-            vol.Optional(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
+            vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
             vol.Required(CONF_HVAC_OPTIONS, default=config.get(CONF_HVAC_OPTIONS)):  vol.In(range(MAX_HVAC_OPTIONS)),
             vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS_OPTFLOW),

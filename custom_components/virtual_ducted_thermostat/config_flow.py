@@ -110,7 +110,6 @@ class VirtualDuctedThermostatConfigFlow(config_entries.ConfigFlow):
         if user_input is not None and user_input != {}:
             if are_third_step_data_valid(self, user_input):
                 self._data.update(user_input)
-                self._data[CONF_CENTRAL_CLIMATE] = string_to_list(self._data[CONF_CENTRAL_CLIMATE])
                 self._data[CONF_MIN_CYCLE_DURATION] = string_to_timedelta(self._data[CONF_MIN_CYCLE_DURATION])
                 final_data = {}
                 for key in self._data.keys():
@@ -231,7 +230,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None and user_input != {}:
             if are_third_step_data_valid(self, user_input):
                 self._data = null_data_cleaner(self._data, user_input)
-                self._data[CONF_CENTRAL_CLIMATE] = string_to_list(self._data[CONF_CENTRAL_CLIMATE])
                 self._data[CONF_MIN_CYCLE_DURATION] = string_to_timedelta(self._data[CONF_MIN_CYCLE_DURATION])
                 final_data = {}
                 for key in self._data.keys():
@@ -305,10 +303,9 @@ def are_second_step_data_valid(self, user_input) -> bool:
     return True
 
 def are_third_step_data_valid(self, user_input) -> bool:
-    if user_input[CONF_CENTRAL_CLIMATE] != "" and user_input[CONF_CENTRAL_CLIMATE] != "null":
-        if not are_entities_valid(self, user_input[CONF_CENTRAL_CLIMATE]) or not user_input[CONF_CENTRAL_CLIMATE][:8:] == "climate." :
-            self._errors["base"] = "central climate"
-            return False
+    if not are_entities_valid(self, user_input[CONF_CENTRAL_CLIMATE]) or not user_input[CONF_CENTRAL_CLIMATE][:8:] == "climate." :
+        self._errors["base"] = "central climate"
+        return False
     if user_input[CONF_MIN_CYCLE_DURATION] != "" and user_input[CONF_MIN_CYCLE_DURATION] != "null":
         check = re.match(REGEX_STRING, user_input[CONF_MIN_CYCLE_DURATION])
         _LOGGER.debug("check: %s", check)
