@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity
+from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity, DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_COOL,
     CURRENT_HVAC_HEAT,
@@ -13,7 +13,9 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
-    HVAC_MODE_HEAT_COOL
+    HVAC_MODE_HEAT_COOL,
+    SERVICE_SET_HVAC_MODE,
+    ATTR_HVAC_MODE
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -251,17 +253,19 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     async def _async_turn_on(self, mode=None):
         """Turn toggleable device on."""
+        vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         if mode == "heat":
+            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: mode}
             # TODO
-            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         elif mode == "cool":
-            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
+            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: mode}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
 
         if not self._is_device_active_function(forced=False) and self.is_active_long_enough(mode=mode):
             self._set_hvac_action_on(mode=mode)
-            await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, data)
+            await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, vent_data)
+            await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
             await self.async_update_ha_state()
 
     async def _async_turn_off(self, mode=None, forced=False):
