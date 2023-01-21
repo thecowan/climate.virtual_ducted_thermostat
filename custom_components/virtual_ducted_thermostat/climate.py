@@ -39,14 +39,12 @@ from .const import (
     VERSION,
     DOMAIN,
     PLATFORM,
-    ATTR_HEATER_IDS,
-    ATTR_COOLER_IDS,
+    ATTR_VENT_SWITCH_IDS,
     ATTR_SENSOR_ID
 )
 from .config_schema import(
     CLIMATE_SCHEMA,
-    CONF_HEATER,
-    CONF_COOLER,
+    CONF_VENT_SWITCH,
     CONF_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
@@ -96,8 +94,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         """Initialize the thermostat."""
         self.hass = hass
         self._name = config.get(CONF_NAME)
-        self.heaters_entity_ids = self._getEntityList(config.get(CONF_HEATER))
-        self.coolers_entity_ids = self._getEntityList(config.get(CONF_COOLER))
+        self.vent_switch_entity_ids = self._getEntityList(config.get(CONF_VENT_SWITCH))
         self.sensor_entity_id = config.get(CONF_SENSOR)
         self._tolerance = config.get(CONF_TOLERANCE)
         self._min_temp = config.get(CONF_MIN_TEMP)
@@ -123,14 +120,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         options = "{0:b}".format(self._hvac_options).zfill(3)[::-1]
         if options[0] == "1":
             self._hvac_list.append(HVAC_MODE_OFF)
-        if self.heaters_entity_ids is not None and options[1] == "1":
-            self._hvac_list.append(HVAC_MODE_HEAT)
-        if self.coolers_entity_ids is not None and options[1] == "1":
-            self._hvac_list.append(HVAC_MODE_COOL)
-        if (self.heaters_entity_ids != None or self.coolers_entity_ids != None) and  options[2] == "1":
-            self._hvac_list.append(HVAC_MODE_HEAT_COOL)
-        if self.heaters_entity_ids == None and self.coolers_entity_ids == None:
-            _LOGGER.error("ERROR on climate.%s, you have to define at least one between heater and cooler", self._name)
+        #if self.heaters_entity_ids is not None and options[1] == "1":
+        self._hvac_list.append(HVAC_MODE_HEAT)
+        #if self.coolers_entity_ids is not None and options[1] == "1":
+        self._hvac_list.append(HVAC_MODE_COOL)
+        #if (self.heaters_entity_ids != None or self.coolers_entity_ids != None) and  options[2] == "1":
+        #    self._hvac_list.append(HVAC_MODE_HEAT_COOL)
+        #if self.heaters_entity_ids == None and self.coolers_entity_ids == None:
+        #    _LOGGER.error("ERROR on climate.%s, you have to define at least one between heater and cooler", self._name)
         if not self._hvac_list:
             self._hvac_list.append(HVAC_MODE_OFF)
             _LOGGER.error("ERROR on climate.%s, you have choosen a wrong value of hvac_options, please check documentation", self._name)
@@ -145,12 +142,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._hvac_mode = HVAC_MODE_OFF
         self._support_flags = SUPPORT_FLAGS
 
-        """ Check if heaters and coolers are the same """
-        if self.heaters_entity_ids == self.coolers_entity_ids:
-            self._are_entities_same = True
-        else:
-            self._are_entities_same = False
-
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
         await super().async_added_to_hass()
@@ -159,14 +150,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, self.sensor_entity_id, self._async_sensor_changed))
-        if self._hvac_mode == HVAC_MODE_HEAT:
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, self.heaters_entity_ids, self._async_switch_changed))
-        elif self._hvac_mode == HVAC_MODE_COOL:
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, self.coolers_entity_ids, self._async_switch_changed))
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self.vent_switch_entity_ids, self._async_switch_changed))
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, self.target_entity_id, self._async_target_changed))
@@ -238,17 +224,17 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         elif self._hvac_mode == HVAC_MODE_HEAT:
             _LOGGER.debug("set to heat")
             await self._async_control_thermo(mode="heat")
-            for opmod in self._hvac_list:
-                if opmod is HVAC_MODE_COOL and not self._are_entities_same:
-                    await self._async_turn_off(mode="cool", forced=True)
-                    return
+            #for opmod in self._hvac_list:
+            #    if opmod is HVAC_MODE_COOL and not self._are_entities_same:
+            #        await self._async_turn_off(mode="cool", forced=True)
+            #        return
         elif self._hvac_mode == HVAC_MODE_COOL:
             _LOGGER.debug("set to cool")
             await self._async_control_thermo(mode="cool")
-            for opmod in self._hvac_list:
-                if opmod is HVAC_MODE_HEAT and not self._are_entities_same:
-                    await self._async_turn_off(mode="heat", forced=True)
-                    return
+            #for opmod in self._hvac_list:
+            #    if opmod is HVAC_MODE_HEAT and not self._are_entities_same:
+            #        await self._async_turn_off(mode="heat", forced=True)
+            #        return
         else:
             _LOGGER.debug("set to auto")
             for opmod in self._hvac_list:
@@ -264,11 +250,12 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         return
 
     async def _async_turn_on(self, mode=None):
-        """Turn heater toggleable device on."""
+        """Turn toggleable device on."""
         if mode == "heat":
-            data = {ATTR_ENTITY_ID: self.heaters_entity_ids}
+            # TODO
+            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         elif mode == "cool":
-            data = {ATTR_ENTITY_ID: self.coolers_entity_ids}
+            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
 
@@ -284,9 +271,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.info("climate.%s - Central climate object action is %s, so no action taken.", self._name, central_climate_hvac_action)
             return
         if mode == "heat":
-            data = {ATTR_ENTITY_ID: self.heaters_entity_ids}
+            # TODO
+            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         elif mode == "cool":
-            data = {ATTR_ENTITY_ID: self.coolers_entity_ids}
+            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
         self._check_mode_type = mode
@@ -351,14 +339,15 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.info("climate.%s - Abort _async_control_thermo as _target_temp is None", self._name)
             return
 
+        # TODO
         if mode == "heat":
             hvac_mode = HVAC_MODE_COOL
             delta = self._target_temp - self._cur_temp
-            entities = self.heaters_entity_ids
+            entities = self.vent_switch_entity_ids
         elif mode == "cool":
             hvac_mode = HVAC_MODE_HEAT
             delta = self._cur_temp - self._target_temp
-            entities = self.coolers_entity_ids
+            entities = self.vent_switch_entity_ids
         else:
             _LOGGER.error("climate.%s - No type has been passed to control_thermo function", self._name)
         self._check_mode_type = mode
@@ -390,13 +379,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
            For the other CURRENT_HVAC_*, this is not needed becasue they work perfectly at the turn_on."""
         # This if condition is necessary to correctly manage the action for the different modes.
         _LOGGER.debug("climate.%s - mode=%s \r\ntarget=%s \r\n current=%s", self._name, mode, self._target_temp, self._cur_temp)
+        # TODO
         if mode == "heat":
             delta = self._target_temp - self._cur_temp
-            entities = self.coolers_entity_ids
+            entities = self.vent_switch_entity_ids
             mode_2 = "cool"
         elif mode == "cool":
             delta = self._cur_temp - self._target_temp
-            entities = self.heaters_entity_ids
+            entities = self.vent_switch_entity_ids
             mode_2 = "heat"
         else:
             _LOGGER.error("climate.%s - No type has been passed to control_thermo function", self._name)
@@ -413,7 +403,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if abs(delta) >= self._tolerance and entities != None:
                 self._set_hvac_action_on(mode=mode_2)
         else:
-            if self._are_entities_same and not self._is_device_active_function(forced=False):
+            #if self._are_entities_same and not self._is_device_active_function(forced=False):
+            if not self._is_device_active_function(forced=False):
                 self._hvac_action = CURRENT_HVAC_OFF
             else:
                 _LOGGER.error("climate.%s - Error during set of HVAC_ACTION", self._name)
@@ -455,38 +446,37 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     def _is_device_active_function(self, forced):
         """If the toggleable device is currently active."""
-        _LOGGER.debug("climate.%s - \r\nheaters: %s \r\ncoolers: %s \r\n_check_mode_type: %s \r\n_hvac_mode: %s \r\nforced: %s", self._name, self.heaters_entity_ids, self.coolers_entity_ids, self._check_mode_type, self._hvac_mode, forced)
+        _LOGGER.debug("climate.%s - \r\nvent switches: %s \r\n_check_mode_type: %s \r\n_hvac_mode: %s \r\nforced: %s", self._name, self.vent_switch_entity_ids, self._check_mode_type, self._hvac_mode, forced)
         if not forced:
             _LOGGER.debug("climate.%s - 410- enter in classic mode: %s", self._name, forced)
             if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+                # TODO
                 if self._check_mode_type == "cool":
-                    return self._areAllInState(self.coolers_entity_ids, STATE_ON)
+                    return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
                 elif self._check_mode_type == "heat":
-                    return self._areAllInState(self.heaters_entity_ids, STATE_ON)
+                    return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
                 else:
                     return False
             elif self._hvac_mode == HVAC_MODE_HEAT:
-                _LOGGER.debug("climate.%s - 419 - heaters: %s", self._name, self.heaters_entity_ids)
-                return self._areAllInState(self.heaters_entity_ids, STATE_ON)
+                _LOGGER.debug("climate.%s - 419 - vent switches: %s", self._name, self.vent_switch_entity_ids)
+                #TODO
+                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
             elif self._hvac_mode == HVAC_MODE_COOL:
-                _LOGGER.debug("climate.%s - 422 - coolers: %s", self._name, self.coolers_entity_ids)
-                return self._areAllInState(self.coolers_entity_ids, STATE_ON)
+                _LOGGER.debug("climate.%s - 422 - vent switches: %s", self._name, self.vent_switch_entity_ids)
+                #TODO
+                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
             else:
                 return False
-                """if self._check_mode_type == "cool":
-                    return self._areAllInState(self.coolers_entity_ids, STATE_ON)
-                elif self._check_mode_type == "heat":
-                    return self._areAllInState(self.heaters_entity_ids, STATE_ON)
-                else:
-                    return False"""
         else:
             _LOGGER.debug("climate.%s - 433- enter in forced mode: %s", self._name, forced)
             if self._check_mode_type == "heat":
-                _LOGGER.debug("climate.%s - 435 - heaters: %s", self._name, self.heaters_entity_ids)
-                return self._areAllInState(self.heaters_entity_ids, STATE_ON)
+                # TODO
+                _LOGGER.debug("climate.%s - 435 - vent switches: %s", self._name, self.vent_switch_entity_ids)
+                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
             elif self._check_mode_type == "cool":
-                _LOGGER.debug("climate.%s - 438 - coolers: %s", self._name, self.coolers_entity_ids)
-                return self._areAllInState(self.coolers_entity_ids, STATE_ON)
+                # TODO
+                _LOGGER.debug("climate.%s - 435 - vent switches: %s", self._name, self.vent_switch_entity_ids)
+                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
             else:
                 return False
 
@@ -499,10 +489,12 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         else:
             current_state = STATE_OFF
         if mode == "heat":
-            for entity in self.heaters_entity_ids:
+            # TODO
+            for entity in self.vent_switch_entity_ids:
                 return condition.state(self.hass, entity, current_state, self.min_cycle_duration)
         elif mode == "cool":
-            for entity in self.coolers_entity_ids:
+            # TODO
+            for entity in self.vent_switch_entity_ids:
                 return condition.state(self.hass, entity, current_state, self.min_cycle_duration)
         else:
             _LOGGER.error("Wrong mode have been passed to function is_active_long_enough")
@@ -510,7 +502,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     @callback
     def _async_switch_changed(self, event):
-        """Handle heater switch state changes."""
+        """Handle climate switch state changes."""
         new_state = event.data.get("new_state")
         if new_state is None:
             return
@@ -619,8 +611,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         """Return entity specific state attributes to be saved. """
         attributes = {}
 
-        attributes[ATTR_HEATER_IDS] = self.heaters_entity_ids
-        attributes[ATTR_COOLER_IDS] = self.coolers_entity_ids
+        attributes[ATTR_VENT_SWITCH_IDS] = self.vent_switch_entity_ids
         attributes[ATTR_SENSOR_ID] = self.sensor_entity_id
 
         return attributes

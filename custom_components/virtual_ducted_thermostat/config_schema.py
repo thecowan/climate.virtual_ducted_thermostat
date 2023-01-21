@@ -23,8 +23,6 @@ from .helpers import dict_to_string
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_HEATER = 'heater'
-CONF_COOLER = 'cooler'
 CONF_SENSOR = 'actual_temp_sensor'
 CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
@@ -35,11 +33,12 @@ CONF_CENTRAL_CLIMATE = 'central_climate'
 CONF_HVAC_OPTIONS = 'hvac_options'
 CONF_AUTO_MODE = 'auto_mode'
 CONF_MIN_CYCLE_DURATION = 'min_cycle_duration'
+#CONF_ZONE = 'zone'
+CONF_VENT_SWITCH = 'vent_switch'
 SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 
 CLIMATE_SCHEMA = {
-    vol.Optional(CONF_HEATER): cv.entity_ids,
-    vol.Optional(CONF_COOLER): cv.entity_ids,
+    vol.Required(CONF_VENT_SWITCH): cv.entity_ids,
     vol.Required(CONF_SENSOR): cv.entity_id,
     vol.Required(CONF_TARGET): cv.entity_id,
     vol.Optional(CONF_MAX_TEMP, default=DEFAULT_MAX_TEMP): vol.Coerce(float),
@@ -50,15 +49,15 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_HVAC_OPTIONS, default=DEFAULT_HVAC_OPTIONS): vol.In(range(MAX_HVAC_OPTIONS)),
     vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
-    vol.Optional(CONF_MIN_CYCLE_DURATION): cv.positive_time_period
+    vol.Optional(CONF_MIN_CYCLE_DURATION): cv.positive_time_period,
+    #vol.Optional(CONF_ZONES): vol.Any(_cv_controller_target, [_cv_controller_target])
 }
 
 def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict:
     if not config:
         config = {
             CONF_NAME: DEFAULT_NAME,
-            CONF_HEATER: "",
-            CONF_COOLER: "",
+            CONF_VENT_SWITCH: "",
             CONF_SENSOR: "",
             CONF_TARGET: "",
             CONF_MAX_TEMP: DEFAULT_MAX_TEMP,
@@ -73,8 +72,7 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
     if config_flow_step==1:
         return {
             vol.Optional(CONF_NAME, default=config.get(CONF_NAME)): str,
-            vol.Optional(CONF_HEATER, default=config.get(CONF_HEATER)): str,
-            vol.Optional(CONF_COOLER, default=config.get(CONF_COOLER)): str,
+            vol.Required(CONF_VENT_SWITCH, default=config.get(CONF_VENT_SWITCH)): str,
             vol.Required(CONF_SENSOR, default=config.get(CONF_SENSOR)): str,
             vol.Required(CONF_TARGET, default=config.get(CONF_TARGET)): str
         }
@@ -82,8 +80,7 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         #identical to step 1 but without NAME (better to not change it since it will break configuration)
         #this is used for options flow only
         return {
-            vol.Optional(CONF_HEATER, default=config.get(CONF_HEATER)): str,
-            vol.Optional(CONF_COOLER, default=config.get(CONF_COOLER)): str,
+            vol.Required(CONF_VENT_SWITCH, default=config.get(CONF_VENT_SWITCH)): str,
             vol.Required(CONF_SENSOR, default=config.get(CONF_SENSOR)): str,
             vol.Required(CONF_TARGET, default=config.get(CONF_TARGET)): str
         }

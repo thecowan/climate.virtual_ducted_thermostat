@@ -20,8 +20,7 @@ from .const import (
 )
 from .config_schema import (
     get_config_flow_schema,
-    CONF_HEATER,
-    CONF_COOLER,
+    CONF_VENT_SWITCH,
     CONF_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
@@ -62,8 +61,7 @@ class VirtualDuctedThermostatConfigFlow(config_entries.ConfigFlow):
         if user_input is not None:
             if are_first_step_data_valid(self, user_input):
                 self._data.update(user_input)
-                self._data[CONF_HEATER] = string_to_list(self._data[CONF_HEATER])
-                self._data[CONF_COOLER] = string_to_list(self._data[CONF_COOLER])
+                self._data[CONF_VENT_SWITCH] = string_to_list(self._data[CONF_VENT_SWITCH])
                 _LOGGER.info("First input data are valid. Proceed with second step. %s", self._data)
                 return await self.async_step_second()
             _LOGGER.warning("Wrong data have been input in the first form")
@@ -177,8 +175,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             if are_first_step_data_valid(self, user_input):
                 self._data = null_data_cleaner(self._data, user_input)
-                self._data[CONF_HEATER] = string_to_list(self._data[CONF_HEATER])
-                self._data[CONF_COOLER] = string_to_list(self._data[CONF_COOLER])
+                self._data[CONF_VENT_SWITCH] = string_to_list(self._data[CONF_VENT_SWITCH])
                 _LOGGER.info("First input data are valid. Proceed with second step. %s", self._data)
                 return await self.async_step_second()
             _LOGGER.warning("Wrong data have been input in the first form")
@@ -270,18 +267,9 @@ class EmptyOptions(config_entries.OptionsFlow):
 #####################################################
 def are_first_step_data_valid(self, user_input) -> bool:
     _LOGGER.debug("entered in data validation first")
-    if (user_input[CONF_HEATER] == "" and user_input[CONF_COOLER] == "") or (user_input[CONF_HEATER] == "null" and user_input[CONF_COOLER] == "null"):
-        self._errors["base"]="heater and cooler"
+    if not are_entities_valid(self, user_input[CONF_VENT_SWITCH]):
+        self._errors["base"]="vent switch wrong"
         return False
-    else:
-        if user_input[CONF_HEATER] != "" and user_input[CONF_HEATER] != "null":
-            if not are_entities_valid(self, user_input[CONF_HEATER]):
-                self._errors["base"]="heater wrong"
-                return False
-        if user_input[CONF_COOLER] != "" and user_input[CONF_COOLER] != "null":
-            if not are_entities_valid(self, user_input[CONF_COOLER]):
-                self._errors["base"]="cooler wrong"
-                return False
     if not are_entities_valid(self, user_input[CONF_SENSOR]):
         self._errors["base"]="sensor wrong"
         return False
