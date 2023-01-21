@@ -94,6 +94,7 @@ class VirtualThermostatHolder():
         self.hass = hass
         #self._name = config.get(CONF_NAME)
         self.climate_entities = [VirtualDuctedThermostat(hass, config, zoneconfig) for zoneconfig in config[CONF_ZONE]]
+        # TODO- attributes summarizing state?
 
 
 class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
