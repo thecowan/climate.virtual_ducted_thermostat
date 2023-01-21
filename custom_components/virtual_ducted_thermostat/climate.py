@@ -269,20 +269,22 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     async def _async_turn_off(self, mode=None, forced=False):
         """Turn heater toggleable device off."""
         central_climate_hvac_action = self.hass.states.get(self._central_climate).attributes['hvac_action']
-        if central_climate_hvac_action == CURRENT_HVAC_HEAT or central_climate_hvac_action == CURRENT_HVAC_COOL:
-            _LOGGER.info("climate.%s - Central climate object action is %s, so no action taken.", self._name, central_climate_hvac_action)
-            return
+        # TODO if central_climate_hvac_action == CURRENT_HVAC_HEAT or central_climate_hvac_action == CURRENT_HVAC_COOL:
+        #    _LOGGER.info("climate.%s - Central climate object action is %s, so no action taken.", self._name, central_climate_hvac_action)
+        #    return
+        vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         if mode == "heat":
-            # TODO
-            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
+            #TODO
+            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
         elif mode == "cool":
-            data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
+            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
         self._check_mode_type = mode
         if self._is_device_active_function(forced=forced) and self.is_active_long_enough(mode=mode):
             self._set_hvac_action_off(mode=mode)
-            await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_OFF, data)
+            await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_OFF, vent_data)
+            await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
             await self.async_update_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode):
