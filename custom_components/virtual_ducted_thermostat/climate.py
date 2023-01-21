@@ -47,7 +47,6 @@ from .const import (
 from .config_schema import(
     CLIMATE_SCHEMA,
     CONF_VENT_SWITCH,
-    CONF_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TOLERANCE,
@@ -56,6 +55,8 @@ from .config_schema import(
     CONF_HVAC_OPTIONS,
     CONF_AUTO_MODE,
     CONF_MIN_CYCLE_DURATION,
+    CONF_ZONE,
+    CONF_ZONE_SENSOR,
     SUPPORT_FLAGS
 )
 from .helpers import dict_to_timedelta
@@ -73,7 +74,7 @@ async def async_setup_platform(hass, config, async_add_entities,
     """Add VirtualDuctedThermostat entities from configuration.yaml."""
     _LOGGER.info("Setup entity coming from configuration.yaml named: %s", config.get(CONF_NAME))
     await async_setup_reload_service(hass, DOMAIN, PLATFORM)
-    async_add_entities([VirtualDuctedThermostat(hass, config)])
+    async_add_entities(VirtualThermostatHolder(hass, config).climate_entities)
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add VirtualDuctedThermostat entities from configuration flow."""
@@ -84,19 +85,26 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
         result = config_entry.data
     _LOGGER.info("setup entity-config_entry_data=%s",result)
     await async_setup_reload_service(hass, DOMAIN, PLATFORM)
+
     async_add_devices([VirtualDuctedThermostat(hass, result)])
+
+
+class VirtualThermostatHolder():
+    def __init__(self, hass, config):
+        self.hass = hass
+        #self._name = config.get(CONF_NAME)
+        self.climate_entities = [VirtualDuctedThermostat(hass, config, zoneconfig) for zoneconfig in config[CONF_ZONE]]
 
 
 class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     """VirtualDuctedThermostat."""
-
-    def __init__(self, hass, config):
-
+    def __init__(self, hass, config, zoneconfig):
         """Initialize the thermostat."""
         self.hass = hass
-        self._name = config.get(CONF_NAME)
-        self.vent_switch_entity_ids = self._getEntityList(config.get(CONF_VENT_SWITCH))
-        self.sensor_entity_id = config.get(CONF_SENSOR)
+        self._name = zoneconfig.get(CONF_NAME)
+        self.vent_switch_entity_ids = self._getEntityList(zoneconfig.get(CONF_VENT_SWITCH))
+        self.sensor_entity_id = zoneconfig.get(CONF_ZONE_SENSOR)
+
         self._tolerance = config.get(CONF_TOLERANCE)
         self._min_temp = config.get(CONF_MIN_TEMP)
         self._max_temp = config.get(CONF_MAX_TEMP)
