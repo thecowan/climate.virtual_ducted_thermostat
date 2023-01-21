@@ -26,7 +26,6 @@ _LOGGER = logging.getLogger(__name__)
 CONF_SENSOR = 'actual_temp_sensor'
 CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
-CONF_TARGET = 'target_temp_sensor'
 CONF_TOLERANCE = 'tolerance'
 CONF_INITIAL_HVAC_MODE = 'initial_hvac_mode'
 CONF_CENTRAL_CLIMATE = 'central_climate'
@@ -40,7 +39,6 @@ SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 CLIMATE_SCHEMA = {
     vol.Required(CONF_VENT_SWITCH): cv.entity_ids,
     vol.Required(CONF_SENSOR): cv.entity_id,
-    vol.Required(CONF_TARGET): cv.entity_id,
     vol.Optional(CONF_MAX_TEMP, default=DEFAULT_MAX_TEMP): vol.Coerce(float),
     vol.Optional(CONF_MIN_TEMP, default=DEFAULT_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -59,7 +57,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
             CONF_NAME: DEFAULT_NAME,
             CONF_VENT_SWITCH: "",
             CONF_SENSOR: "",
-            CONF_TARGET: "",
             CONF_MAX_TEMP: DEFAULT_MAX_TEMP,
             CONF_MIN_TEMP: DEFAULT_MIN_TEMP,
             CONF_TOLERANCE: DEFAULT_TOLERANCE,
@@ -74,7 +71,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
             vol.Optional(CONF_NAME, default=config.get(CONF_NAME)): str,
             vol.Required(CONF_VENT_SWITCH, default=config.get(CONF_VENT_SWITCH)): str,
             vol.Required(CONF_SENSOR, default=config.get(CONF_SENSOR)): str,
-            vol.Required(CONF_TARGET, default=config.get(CONF_TARGET)): str
         }
     elif config_flow_step==4:
         #identical to step 1 but without NAME (better to not change it since it will break configuration)
@@ -82,7 +78,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         return {
             vol.Required(CONF_VENT_SWITCH, default=config.get(CONF_VENT_SWITCH)): str,
             vol.Required(CONF_SENSOR, default=config.get(CONF_SENSOR)): str,
-            vol.Required(CONF_TARGET, default=config.get(CONF_TARGET)): str
         }
     elif config_flow_step==2:
         return {

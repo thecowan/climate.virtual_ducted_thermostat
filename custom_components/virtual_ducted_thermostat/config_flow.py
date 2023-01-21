@@ -24,7 +24,6 @@ from .config_schema import (
     CONF_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
-    CONF_TARGET,
     CONF_TOLERANCE,
     CONF_CENTRAL_CLIMATE,
     CONF_MIN_CYCLE_DURATION
@@ -272,9 +271,6 @@ def are_first_step_data_valid(self, user_input) -> bool:
         return False
     if not are_entities_valid(self, user_input[CONF_SENSOR]):
         self._errors["base"]="sensor wrong"
-        return False
-    if not are_entities_valid(self, user_input[CONF_TARGET]):
-        self._errors["base"]="target wrong"
         return False
     return True
 

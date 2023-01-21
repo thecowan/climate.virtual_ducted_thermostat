@@ -50,7 +50,6 @@ from .config_schema import(
     CONF_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
-    CONF_TARGET,
     CONF_TOLERANCE,
     CONF_INITIAL_HVAC_MODE,
     CONF_CENTRAL_CLIMATE,
@@ -102,7 +101,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._min_temp = config.get(CONF_MIN_TEMP)
         self._max_temp = config.get(CONF_MAX_TEMP)
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
-        self.target_entity_id = config.get(CONF_TARGET)
         self._unit = hass.config.units.temperature_unit
         self._central_climate = config.get(CONF_CENTRAL_CLIMATE)
         self._hvac_options = config.get(CONF_HVAC_OPTIONS)
@@ -111,7 +109,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self.min_cycle_duration = config.get(CONF_MIN_CYCLE_DURATION)
         if type(self.min_cycle_duration) == type({}):
             self.min_cycle_duration = dict_to_timedelta(self.min_cycle_duration)
-        self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
+        # self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
+        # TODO
+        self._target_temp = float((self._min_temp + self._max_temp)/2)
         self._restore_temp = self._target_temp
         self._cur_temp = self._getFloat(self._getStateSafe(self.sensor_entity_id), self._target_temp)
         self._active = False
@@ -157,9 +157,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 self.hass, self.vent_switch_entity_ids, self._async_switch_changed))
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass, self.target_entity_id, self._async_target_changed))
-        self.async_on_remove(
-            async_track_state_change_event(
                 self.hass, self._central_climate, self._async_switch_changed))
 
         @callback
@@ -168,11 +165,12 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             sensor_state = self._getStateSafe(self.sensor_entity_id)
             if sensor_state and sensor_state != STATE_UNKNOWN:
                 self._async_update_temp(sensor_state)
-            target_state = self._getStateSafe(self.target_entity_id)
-            if target_state and \
-               target_state != STATE_UNKNOWN and \
-               self._hvac_mode != HVAC_MODE_HEAT_COOL:
-                self._async_update_program_temp(target_state)
+            #TODO
+            #target_state = self._getStateSafe(self.target_entity_id)
+            #if target_state and \
+            #   target_state != STATE_UNKNOWN and \
+            #   self._hvac_mode != HVAC_MODE_HEAT_COOL:
+            #    self._async_update_program_temp(target_state)
 
         self.hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_START, _async_startup)
@@ -185,11 +183,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if self._target_temp is None:
                 # If we have a previously saved temperature
                 if old_state.attributes.get(ATTR_TEMPERATURE) is None:
-                    target_entity_state = self._getStateSafe(self.target_entity_id)
-                    if target_entity_state is not None:
-                        self._target_temp = float(target_entity_state)
-                    else:
-                        self._target_temp = float((self._min_temp + self._max_temp)/2)
+                    #target_entity_state = self._getStateSafe(self.target_entity_id)
+                    #if target_entity_state is not None:
+                    #    self._target_temp = float(target_entity_state)
+                    #else:
+                    self._target_temp = float((self._min_temp + self._max_temp)/2)
                     _LOGGER.warning("climate.%s - Undefined target temperature,"
                                     "falling back to %s", self._name , self._target_temp)
                 else:
@@ -323,6 +321,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         await self.control_system_mode()
         await self.async_update_ha_state()
 
+    # TODO: delete?
     async def _async_target_changed(self, event):
         """Handle temperature changes in the program."""
         new_state = event.data.get("new_state")
@@ -330,6 +329,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             return
         self._restore_temp = float(new_state.state)
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            # TODO: delete?
             self._async_restore_program_temp()
         await self.control_system_mode()
         await self.async_update_ha_state()
@@ -526,8 +526,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         try:
             if self._restore_temp is not None:
                 self._target_temp = self._restore_temp
-            else:
-                self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
+            #else:
+            #    self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
         except ValueError as ex:
             _LOGGER.warning("climate.%s - Unable to restore program temperature from sensor: %s", self._name, ex)
 
