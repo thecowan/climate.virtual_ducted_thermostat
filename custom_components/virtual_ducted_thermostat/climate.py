@@ -93,14 +93,17 @@ class VirtualThermostatHolder():
     def __init__(self, hass, config):
         self.hass = hass
         #self._name = config.get(CONF_NAME)
-        self.climate_entities = [VirtualDuctedThermostat(hass, config, zoneconfig) for zoneconfig in config[CONF_ZONE]]
+        self.climate_entities = [VirtualDuctedThermostat(hass, self, config, zoneconfig) for zoneconfig in config[CONF_ZONE]]
+        self._central_climate = config.get(CONF_CENTRAL_CLIMATE)
+        self._unit = hass.config.units.temperature_unit
         # TODO- attributes summarizing state?
 
 
 class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     """VirtualDuctedThermostat."""
-    def __init__(self, hass, config, zoneconfig):
+    def __init__(self, hass, holder, config, zoneconfig):
         """Initialize the thermostat."""
+        self.holder = holder
         self.hass = hass
         self._name = zoneconfig.get(CONF_NAME)
         self.vent_switch_entity_ids = self._getEntityList(zoneconfig.get(CONF_VENT_SWITCH))
@@ -110,8 +113,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._min_temp = config.get(CONF_MIN_TEMP)
         self._max_temp = config.get(CONF_MAX_TEMP)
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
-        self._unit = hass.config.units.temperature_unit
-        self._central_climate = config.get(CONF_CENTRAL_CLIMATE)
         self._hvac_options = config.get(CONF_HVAC_OPTIONS)
         self._auto_mode = config.get(CONF_AUTO_MODE)
         self._hvac_list = []
@@ -166,7 +167,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 self.hass, self.vent_switch_entity_ids, self._async_switch_changed))
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass, self._central_climate, self._async_switch_changed))
+                self.hass, self.holder._central_climate, self._async_climate_changed))
 
         @callback
         def _async_startup(event):
@@ -262,10 +263,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         """Turn toggleable device on."""
         vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         if mode == "heat":
-            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: mode}
+            central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: mode}
             # TODO
         elif mode == "cool":
-            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: mode}
+            central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: mode}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
 
@@ -277,23 +278,24 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     async def _async_turn_off(self, mode=None, forced=False):
         """Turn heater toggleable device off."""
-        central_climate_hvac_action = self.hass.states.get(self._central_climate).attributes['hvac_action']
+        # central_climate_hvac_action = self.hass.states.get(self.holder._central_climate).attributes['hvac_action']
         # TODO if central_climate_hvac_action == CURRENT_HVAC_HEAT or central_climate_hvac_action == CURRENT_HVAC_COOL:
         #    _LOGGER.info("climate.%s - Central climate object action is %s, so no action taken.", self._name, central_climate_hvac_action)
         #    return
         vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
-        if mode == "heat":
-            #TODO
-            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
-        elif mode == "cool":
-            central_data = {ATTR_ENTITY_ID: self._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
-        else:
-            _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
+        #if mode == "heat":
+        #    #TODO
+        #    central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
+        #elif mode == "cool":
+        #    central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
+        #else:
+        #    _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
         self._check_mode_type = mode
         if self._is_device_active_function(forced=forced) and self.is_active_long_enough(mode=mode):
             self._set_hvac_action_off(mode=mode)
+            # TODO: don't seem to be turning off?
             await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_OFF, vent_data)
-            await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
+            #await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
             await self.async_update_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode):
@@ -524,6 +526,27 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self.async_write_ha_state()
 
     @callback
+    async def _async_climate_changed(self, event):
+        """Handle central climate state changes."""
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        central_state = new_state.state
+        my_state = self._hvac_mode
+        _LOGGER.debug("climate.%s - New state from climate %s (vs my %s)", self._name, central_state, my_state)
+        # TODO: check logic here - should this be based on switch state? Or should that just be checked on startup?
+        if (central_state == my_state):
+          _LOGGER.debug("climate.%s - No change, nothing to do", self._name)
+        elif (my_state == HVAC_MODE_OFF):
+          _LOGGER.debug("climate.%s - I'm already off, nothing to do", self._name)
+        # TODO - implement "follow"
+        else:
+          _LOGGER.debug("climate.%s - Guess I'll turn myself off", self._name)
+          await self.async_set_hvac_mode(HVAC_MODE_OFF)
+
+        self.async_write_ha_state()
+
+    @callback
     def _async_update_temp(self, state):
         """Update thermostat with latest state from sensor."""
         try:
@@ -563,7 +586,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement."""
-        return self._unit
+        return self.holder._unit
 
     @property
     def current_temperature(self):
