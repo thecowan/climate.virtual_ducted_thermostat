@@ -7,6 +7,7 @@ from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity, DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate.const import (
+    ClimateEntityFeature,
     HVACAction,
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
@@ -14,8 +15,10 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_HEAT_COOL,
     HVAC_MODE_FAN_ONLY,
     HVAC_MODE_DRY,
+    SERVICE_SET_FAN_MODE,
     SERVICE_SET_HVAC_MODE,
-    ATTR_HVAC_MODE
+    ATTR_HVAC_MODE,
+    ATTR_FAN_MODE
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -56,8 +59,7 @@ from .config_schema import(
     CONF_AUTO_MODE,
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
-    CONF_ZONE_SENSOR,
-    SUPPORT_FLAGS
+    CONF_ZONE_SENSOR
 )
 from .helpers import dict_to_timedelta
 
@@ -139,7 +141,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._hvac_mode = HVAC_MODE_OFF
             self._hvac_action = HVACAction.OFF
 
-        self._support_flags = SUPPORT_FLAGS
+        self._supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+        self._supported_fan_modes = []
+        self._fan_mode = None
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
@@ -175,6 +179,15 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                         # TODO: move this to the enum
                         self._hvac_list.append(str(mode))
                 _LOGGER.debug("climate.%s my supported modes now %s", self._name, self._hvac_list)
+                
+                if (climate_state.attributes['supported_features'] & ClimateEntityFeature.FAN_MODE) != 0:
+                    self._supported_features |= ClimateEntityFeature.FAN_MODE
+                    # TODO don't hardcode this!
+                    self._supported_fan_modes = [mode for mode in climate_state.attributes['fan_modes'] if "/" not in mode]
+                    #self._supported_fan_modes = climate_state.attributes['fan_modes']
+                    self._fan_mode = climate_state.attributes['fan_mode']
+                    _LOGGER.debug("climate.%s my supported fan modes now %s, initial mode %s", self._name, self._supported_fan_modes, self._fan_mode)
+
             #TODO
             #target_state = self._getStateSafe(self.target_entity_id)
             #if target_state and \
@@ -331,6 +344,19 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._target_temp = float(temperature)
         await self.control_system_mode()
         await self.async_update_ha_state()
+
+    async def async_set_fan_mode(self, fan_mode):
+        """Set fan mode."""
+        if fan_mode not in self._supported_fan_modes:
+            _LOGGER.error("climate.%s - Unrecognized fan mode: %s", self._name, fan_mode)
+            return
+
+        self._fan_mode = fan_mode
+        # TODO - is happening even if that's already the mode we're in
+        central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_FAN_MODE: fan_mode}
+        await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_FAN_MODE, central_data)
+        await self.async_update_ha_state()
+        self.async_update_ha_state()
 
     async def _async_sensor_changed(self, event):
         """Handle temperature changes."""
@@ -556,6 +582,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
           _LOGGER.debug("climate.%s - Guess I'll turn myself off", self._name)
           await self.async_set_hvac_mode(HVAC_MODE_OFF)
 
+        if (self._supported_features & ClimateEntityFeature.FAN_MODE) != 0:
+            new_fan_mode = new_state.attributes['fan_mode']
+            if (new_fan_mode == self._fan_mode):
+                _LOGGER.debug("climate.%s - No change to fan, nothing to do", self._name)
+            else:
+                _LOGGER.debug("climate.%s - updating my fan mode to %s", self._name, new_fan_mode)
+                self._fan_mode = new_fan_mode
+
         self.async_write_ha_state()
 
     @callback
@@ -646,7 +680,17 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return self._support_flags
+        return self._supported_features
+
+    @property
+    def fan_mode(self):
+        """Return the current fan mode."""
+        return self._fan_mode
+
+    @property
+    def fan_modes(self):
+        """Return the list of supported fan modes."""
+        return self._supported_fan_modes
 
     @property
     def hvac_action(self):

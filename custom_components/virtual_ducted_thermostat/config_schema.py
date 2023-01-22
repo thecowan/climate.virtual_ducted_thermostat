@@ -35,7 +35,6 @@ CONF_ZONE = 'zone'
 CONF_VENT_SWITCH = 'vent_switch'
 CONF_NAME = 'name'
 CONF_ZONE_SENSOR = 'temp_sensor'
-SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 
 ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_VENT_SWITCH): cv.entity_ids,
