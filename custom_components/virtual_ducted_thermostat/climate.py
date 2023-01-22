@@ -7,13 +7,13 @@ from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity, DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_OFF,
+    HVACAction,
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     HVAC_MODE_HEAT_COOL,
+    HVAC_MODE_FAN_ONLY,
+    HVAC_MODE_DRY,
     SERVICE_SET_HVAC_MODE,
     ATTR_HVAC_MODE
 )
@@ -113,7 +113,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._min_temp = config.get(CONF_MIN_TEMP)
         self._max_temp = config.get(CONF_MAX_TEMP)
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
-        self._hvac_options = config.get(CONF_HVAC_OPTIONS)
+        # TODO kill from config self._hvac_options = config.get(CONF_HVAC_OPTIONS)
         self._auto_mode = config.get(CONF_AUTO_MODE)
         self._hvac_list = []
         self.min_cycle_duration = config.get(CONF_MIN_CYCLE_DURATION)
@@ -126,24 +126,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._cur_temp = self._getFloat(self._getStateSafe(self.sensor_entity_id), self._target_temp)
         self._active = False
         self._temp_lock = asyncio.Lock()
-        self._hvac_action = CURRENT_HVAC_OFF
 
-        """Setting up of HVAC list according to the option parameter"""
-        options = "{0:b}".format(self._hvac_options).zfill(3)[::-1]
-        if options[0] == "1":
-            self._hvac_list.append(HVAC_MODE_OFF)
-        #if self.heaters_entity_ids is not None and options[1] == "1":
-        self._hvac_list.append(HVAC_MODE_HEAT)
-        #if self.coolers_entity_ids is not None and options[1] == "1":
-        self._hvac_list.append(HVAC_MODE_COOL)
-        #if (self.heaters_entity_ids != None or self.coolers_entity_ids != None) and  options[2] == "1":
-        #    self._hvac_list.append(HVAC_MODE_HEAT_COOL)
-        #if self.heaters_entity_ids == None and self.coolers_entity_ids == None:
-        #    _LOGGER.error("ERROR on climate.%s, you have to define at least one between heater and cooler", self._name)
-        if not self._hvac_list:
-            self._hvac_list.append(HVAC_MODE_OFF)
-            _LOGGER.error("ERROR on climate.%s, you have choosen a wrong value of hvac_options, please check documentation", self._name)
-
+        self._hvac_list.append(HVAC_MODE_OFF)
+        self._hvac_action = HVACAction.IDLE
         if self._initial_hvac_mode == HVAC_MODE_HEAT:
             self._hvac_mode = HVAC_MODE_HEAT
         elif self._initial_hvac_mode == HVAC_MODE_HEAT_COOL:
@@ -152,6 +137,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._hvac_mode = HVAC_MODE_COOL
         else:
             self._hvac_mode = HVAC_MODE_OFF
+            self._hvac_action = HVACAction.OFF
+
         self._support_flags = SUPPORT_FLAGS
 
     async def async_added_to_hass(self):
@@ -175,6 +162,19 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             sensor_state = self._getStateSafe(self.sensor_entity_id)
             if sensor_state and sensor_state != STATE_UNKNOWN:
                 self._async_update_temp(sensor_state)
+            climate_state = self._getStateSafe(self.holder._central_climate)
+            climate_state = self.hass.states.get(self.holder._central_climate)
+            if climate_state and climate_state.state != STATE_UNKNOWN:
+                _LOGGER.debug("climate.%s got climate state %s during async_startup", self._name, climate_state)
+                # TODO: handle heat_cool specially
+                for mode in climate_state.attributes['hvac_modes']:
+                    if mode == HVAC_MODE_OFF:
+                        # Skip
+                        pass
+                    else:
+                        # TODO: move this to the enum
+                        self._hvac_list.append(str(mode))
+                _LOGGER.debug("climate.%s my supported modes now %s", self._name, self._hvac_list)
             #TODO
             #target_state = self._getStateSafe(self.target_entity_id)
             #if target_state and \
@@ -224,29 +224,29 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         """this is used to decide what to do, so this function turn off switches and run the function
            that control the temperature."""
         if self._hvac_mode == HVAC_MODE_OFF:
-            _LOGGER.debug("set to off")
+            _LOGGER.debug("climate.%s set to off", self._name)
             for opmod in self._hvac_list:
                 if opmod is HVAC_MODE_HEAT:
                     await self._async_turn_off(mode="heat", forced=True)
                 if opmod is HVAC_MODE_COOL:
                     await self._async_turn_off(mode="cool", forced=True)
-            self._hvac_action = CURRENT_HVAC_OFF
+            self._hvac_action = HVACAction.OFF
         elif self._hvac_mode == HVAC_MODE_HEAT:
-            _LOGGER.debug("set to heat")
+            _LOGGER.debug("climate.%s set to heat", self._name)
             await self._async_control_thermo(mode="heat")
             #for opmod in self._hvac_list:
             #    if opmod is HVAC_MODE_COOL and not self._are_entities_same:
             #        await self._async_turn_off(mode="cool", forced=True)
             #        return
         elif self._hvac_mode == HVAC_MODE_COOL:
-            _LOGGER.debug("set to cool")
+            _LOGGER.debug("climate.%s set to cool", self._name)
             await self._async_control_thermo(mode="cool")
             #for opmod in self._hvac_list:
             #    if opmod is HVAC_MODE_HEAT and not self._are_entities_same:
             #        await self._async_turn_off(mode="heat", forced=True)
             #        return
-        else:
-            _LOGGER.debug("set to auto")
+        elif self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            _LOGGER.debug("climate.%s set to auto", self._name)
             for opmod in self._hvac_list:
             # Check of self._auto_mode has been added to avoid cooling a room that has just been heated and vice versa
             # LET'S PRESERVE ENERGY!
@@ -257,24 +257,38 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 if opmod is HVAC_MODE_COOL and self._auto_mode != 'heating':
                     _LOGGER.debug("climate.%s - Entered here in cooling mode", self._name)
                     await self._async_control_thermo(mode="cool")
+        elif self._hvac_mode == HVAC_MODE_FAN_ONLY:
+            _LOGGER.debug("climate.%s set to fan only", self._name)
+            await self._async_control_non_thermo()
+        elif self._hvac_mode == HVAC_MODE_DRY:
+            _LOGGER.debug("climate.%s set to dry", self._name)
+            await self._async_control_non_thermo()
+        else:
+            _LOGGER.debug("climate.%s set to unrecognised mode - %s, skipping control", self._name, self._hvac_mode)
         return
 
     async def _async_turn_on(self, mode=None):
         """Turn toggleable device on."""
         vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
-        if mode == "heat":
-            central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: mode}
-            # TODO
-        elif mode == "cool":
+        if mode in (HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY):
             central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: mode}
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
+            return
 
-        if not self._is_device_active_function(forced=False) and self.is_active_long_enough(mode=mode):
-            self._set_hvac_action_on(mode=mode)
+        if not self._is_device_active_function(forced=False):
+            _LOGGER.error("climate.%s - can't turn on, device inactive", self._name)
+            return
+        if not self.is_active_long_enough(mode=mode):
+            _LOGGER.error("climate.%s - can't turn on, device not active long enough", self._name)
+            # TODO - reshcedule?
+            return
+
+        self._set_hvac_action_on(mode=mode)
+        if not self._areAllInState(self.vent_switch_entity_ids, STATE_ON):
             await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, vent_data)
-            await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
-            await self.async_update_ha_state()
+        await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
+        await self.async_update_ha_state()
 
     async def _async_turn_off(self, mode=None, forced=False):
         """Turn heater toggleable device off."""
@@ -300,18 +314,13 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set hvac mode."""
-        if hvac_mode == HVAC_MODE_HEAT:
-            self._hvac_mode = HVAC_MODE_HEAT
-        elif hvac_mode == HVAC_MODE_COOL:
-            self._hvac_mode = HVAC_MODE_COOL
-        elif hvac_mode == HVAC_MODE_OFF:
-            self._hvac_mode = HVAC_MODE_OFF
-        elif hvac_mode == HVAC_MODE_HEAT_COOL:
-            self._hvac_mode = HVAC_MODE_HEAT_COOL
-            self._async_restore_program_temp()
-        else:
+        if hvac_mode not in self._hvac_list:
             _LOGGER.error("climate.%s - Unrecognized hvac mode: %s", self._name, hvac_mode)
             return
+
+        self._hvac_mode = hvac_mode
+        if hvac_mode == HVAC_MODE_HEAT_COOL:
+            self._async_restore_program_temp()
         await self.control_system_mode()
         # Ensure we update the current operation after changing the mode
         self.async_write_ha_state()
@@ -367,6 +376,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             entities = self.vent_switch_entity_ids
         else:
             _LOGGER.error("climate.%s - No type has been passed to control_thermo function", self._name)
+        # TODO - check what this is for?
         self._check_mode_type = mode
         async with self._temp_lock:
             if not self._active and None not in (self._cur_temp,
@@ -379,6 +389,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if not self._active or self._hvac_mode == HVAC_MODE_OFF or self._hvac_mode == hvac_mode:
                 return
 
+            # TODO - not actually opening here?
             if delta <= 0:
                 if not self._areAllInState(entities, STATE_OFF):
                     _LOGGER.debug("Turning off %s", entities)
@@ -389,6 +400,20 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 if not self._areAllInState(entities, STATE_ON):
                     _LOGGER.debug("Turning on %s", entities)
                     await self._async_turn_on(mode=mode)
+
+    async def _async_control_non_thermo(self):
+        _LOGGER.debug("climate.%s - Entering non-thermo control, mode %s", self._name, self._hvac_mode)
+        entities = self.vent_switch_entity_ids
+        # TODO - check what this is for?
+        self._check_mode_type = self._hvac_mode
+        async with self._temp_lock:
+            if self._hvac_mode == HVAC_MODE_OFF:
+                return
+
+            _LOGGER.debug("climate.%s - Turning on HVAC action", self._name)
+            self._set_hvac_action_on(mode=self._hvac_mode)
+            _LOGGER.debug("climate.%s - Turning on %s", self._name, entities)
+            await self._async_turn_on(mode=self._hvac_mode)
 
     def _set_hvac_action_off(self, mode=None):
         """This is used to set CURRENT_HVAC_OFF on the climate integration.
@@ -406,35 +431,42 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             entities = self.vent_switch_entity_ids
             mode_2 = "heat"
         else:
-            _LOGGER.error("climate.%s - No type has been passed to control_thermo function", self._name)
+            _LOGGER.error("climate.%s - No type has been passed to _set_hvac_action_off function", self._name)
             mode_2 = None
         _LOGGER.debug("climate.%s - delta=%s", self._name, delta)
         if (((mode == "cool" and not self._hvac_mode == HVAC_MODE_HEAT) or \
            (mode == "heat" and not self._hvac_mode == HVAC_MODE_COOL)) and \
            not self._hvac_mode == HVAC_MODE_HEAT_COOL):
-            self._hvac_action = CURRENT_HVAC_OFF
+            # TODO: true, or idle?
+            self._hvac_action = HVACAction.OFF
             _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
         elif self._hvac_mode == HVAC_MODE_HEAT_COOL and delta <= 0:
-            self._hvac_action = CURRENT_HVAC_OFF
+            # TODO: true, or off?
+            self._hvac_action = HVACAction.OFF
             _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
             if abs(delta) >= self._tolerance and entities != None:
                 self._set_hvac_action_on(mode=mode_2)
         else:
             #if self._are_entities_same and not self._is_device_active_function(forced=False):
             if not self._is_device_active_function(forced=False):
-                self._hvac_action = CURRENT_HVAC_OFF
+                self._hvac_action = HVACAction.OFF
             else:
                 _LOGGER.error("climate.%s - Error during set of HVAC_ACTION", self._name)
 
     def _set_hvac_action_on(self, mode=None):
         """This is used to set CURRENT_HVAC_* according to the mode that is running."""
-        if mode == "heat":
-            self._hvac_action = CURRENT_HVAC_HEAT
-        elif mode == "cool":
-            self._hvac_action = CURRENT_HVAC_COOL
+        if mode == HVAC_MODE_HEAT:
+            self._hvac_action = HVACAction.HEATING
+        elif mode == HVAC_MODE_COOL:
+            self._hvac_action = HVACAction.COOLING
+        elif mode == HVAC_MODE_DRY:
+            self._hvac_action = HVACAction.DRYING
+        elif mode == HVAC_MODE_FAN_ONLY:
+            self._hvac_action = HVACAction.FAN
         else:
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
-        _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
+            return
+        _LOGGER.debug("climate.%s - new action %s caused by mode %s", self._name, self._hvac_action, mode)
 
     def _getEntityList(self, entity_ids):
         if entity_ids is not None:
@@ -461,29 +493,16 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 return False
         return True
 
+
+    # TODO: check this?
     def _is_device_active_function(self, forced):
         """If the toggleable device is currently active."""
         _LOGGER.debug("climate.%s - \r\nvent switches: %s \r\n_check_mode_type: %s \r\n_hvac_mode: %s \r\nforced: %s", self._name, self.vent_switch_entity_ids, self._check_mode_type, self._hvac_mode, forced)
         if not forced:
             _LOGGER.debug("climate.%s - 410- enter in classic mode: %s", self._name, forced)
-            if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-                # TODO
-                if self._check_mode_type == "cool":
-                    return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-                elif self._check_mode_type == "heat":
-                    return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-                else:
-                    return False
-            elif self._hvac_mode == HVAC_MODE_HEAT:
-                _LOGGER.debug("climate.%s - 419 - vent switches: %s", self._name, self.vent_switch_entity_ids)
-                #TODO
-                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-            elif self._hvac_mode == HVAC_MODE_COOL:
-                _LOGGER.debug("climate.%s - 422 - vent switches: %s", self._name, self.vent_switch_entity_ids)
-                #TODO
-                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-            else:
-                return False
+            # TODO _check_mode_type was used here, check if it's still valid/needed
+            # TODO - should this check underlying state?
+            return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
         else:
             _LOGGER.debug("climate.%s - 433- enter in forced mode: %s", self._name, forced)
             if self._check_mode_type == "heat":
@@ -505,12 +524,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             current_state = STATE_ON
         else:
             current_state = STATE_OFF
-        if mode == "heat":
-            # TODO
-            for entity in self.vent_switch_entity_ids:
-                return condition.state(self.hass, entity, current_state, self.min_cycle_duration)
-        elif mode == "cool":
-            # TODO
+        if mode in (HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_FAN_ONLY, HVAC_MODE_DRY):
             for entity in self.vent_switch_entity_ids:
                 return condition.state(self.hass, entity, current_state, self.min_cycle_duration)
         else:
