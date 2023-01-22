@@ -11,7 +11,6 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_MAX_TEMP,
     DEFAULT_MIN_TEMP,
-    DEFAULT_HVAC_OPTIONS,
     DEFAULT_AUTO_MODE,
     DEFAULT_MIN_CYCLE_DURATION,
     AUTO_MODE_OPTIONS,
@@ -69,7 +68,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
             CONF_MIN_TEMP: DEFAULT_MIN_TEMP,
             CONF_TOLERANCE: DEFAULT_TOLERANCE,
             CONF_CENTRAL_CLIMATE: "",
-            CONF_HVAC_OPTIONS: DEFAULT_HVAC_OPTIONS,
             CONF_AUTO_MODE: DEFAULT_AUTO_MODE,
             CONF_INITIAL_HVAC_MODE: "",
             CONF_MIN_CYCLE_DURATION: DEFAULT_MIN_CYCLE_DURATION
