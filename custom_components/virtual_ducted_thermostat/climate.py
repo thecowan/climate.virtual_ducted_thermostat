@@ -269,6 +269,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
     async def _async_turn_on(self, mode=None):
         """Turn toggleable device on."""
+        # TODO - is happening even if that's already the mode we're in
         vent_data = {ATTR_ENTITY_ID: self.vent_switch_entity_ids}
         if mode in (HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY):
             central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: mode}
@@ -276,12 +277,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
             return
 
-        if not self._is_device_active_function(forced=False):
-            _LOGGER.error("climate.%s - can't turn on, device inactive", self._name)
-            return
-        if not self.is_active_long_enough(mode=mode):
+        if not self._is_device_active_function(forced=False) and not self.is_active_long_enough(mode=mode):
             _LOGGER.error("climate.%s - can't turn on, device not active long enough", self._name)
-            # TODO - reshcedule?
+            # TODO - reschedule?
             return
 
         self._set_hvac_action_on(mode=mode)
