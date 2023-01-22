@@ -1,7 +1,7 @@
 {
   "domain": "virtual_ducted_thermostat",
   "name": "Virtual Ducted Thermostat",
-  "documentation": "https://github.com/custom-components/climate.programmable_thermostat",
+  "documentation": "https://github.com/thecowan/climate.virtual_ducted_thermostat",
   "dependencies": [
     "sensor",
     "switch"

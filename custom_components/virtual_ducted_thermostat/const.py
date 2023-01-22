@@ -9,13 +9,13 @@ from homeassistant.components.climate.const import (
 VERSION = '0.1'
 DOMAIN = 'virtual_ducted_thermostat'
 PLATFORM = 'climate'
-ISSUE_URL = 'https://github.com/custom-components/climate.programmable_thermostat/issues'
+ISSUE_URL = 'https://github.com/thecowan/climate.virtual_ducted_thermostat/issues'
 CONFIGFLOW_VERSION = 4
 
 
 #Defaults
 DEFAULT_TOLERANCE = 0.5
-DEFAULT_NAME = 'VirtualDucted Thermostat'
+DEFAULT_NAME = 'Virtual Ducted Thermostat'
 DEFAULT_MAX_TEMP = 40
 DEFAULT_MIN_TEMP = 5
 DEFAULT_HVAC_OPTIONS = 7
