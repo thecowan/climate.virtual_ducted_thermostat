@@ -23,24 +23,31 @@ from .helpers import dict_to_string
 
 _LOGGER = logging.getLogger(__name__)
 
+# Per instance
+CONF_CENTRAL_CLIMATE = 'central_climate'
+CONF_MIN_CYCLE_DURATION = 'min_cycle_duration'
+CONF_ZONE = 'zone'
+# TODO Per instance, but should be allowed to be overridden?
+CONF_HVAC_OPTIONS = 'hvac_options'
+CONF_AUTO_MODE = 'auto_mode'
 CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
 CONF_TOLERANCE = 'tolerance'
+# TODO Still needed?
 CONF_INITIAL_HVAC_MODE = 'initial_hvac_mode'
-CONF_CENTRAL_CLIMATE = 'central_climate'
-CONF_HVAC_OPTIONS = 'hvac_options'
-CONF_AUTO_MODE = 'auto_mode'
-CONF_MIN_CYCLE_DURATION = 'min_cycle_duration'
-CONF_ZONE = 'zone'
+
+# Per-zone
 CONF_VENT_SWITCH = 'vent_switch'
 CONF_NAME = 'name'
 CONF_ZONE_SENSOR = 'temp_sensor'
+CONF_UNIQUE_ID = 'unique_id'
 
 ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_VENT_SWITCH): cv.entity_ids,
     # TODO: can be optional?
     vol.Required(CONF_NAME): cv.string,
-    vol.Required(CONF_ZONE_SENSOR): cv.string
+    vol.Required(CONF_ZONE_SENSOR): cv.string,
+    vol.Optional(CONF_UNIQUE_ID): cv.string
 })
 
 CLIMATE_SCHEMA = {

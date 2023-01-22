@@ -59,7 +59,8 @@ from .config_schema import(
     CONF_AUTO_MODE,
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
-    CONF_ZONE_SENSOR
+    CONF_ZONE_SENSOR,
+    CONF_UNIQUE_ID
 )
 from .helpers import dict_to_timedelta
 
@@ -110,6 +111,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._name = zoneconfig.get(CONF_NAME)
         self.vent_switch_entity_ids = self._getEntityList(zoneconfig.get(CONF_VENT_SWITCH))
         self.sensor_entity_id = zoneconfig.get(CONF_ZONE_SENSOR)
+        self._unique_id = zoneconfig.get(CONF_UNIQUE_ID)
 
         self._tolerance = config.get(CONF_TOLERANCE)
         self._min_temp = config.get(CONF_MIN_TEMP)
@@ -699,6 +701,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         Need to be one of CURRENT_HVAC_*.
         """
         return self._hvac_action
+
+    @property
+    def unique_id(self):
+        """Return the unique ID of the device."""
+        return self._unique_id
 
     @property
     def extra_state_attributes(self):
