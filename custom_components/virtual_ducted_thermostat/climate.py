@@ -55,7 +55,6 @@ from .config_schema import(
     CONF_TOLERANCE,
     CONF_INITIAL_HVAC_MODE,
     CONF_CENTRAL_CLIMATE,
-    CONF_HVAC_OPTIONS,
     CONF_AUTO_MODE,
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
@@ -117,7 +116,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._min_temp = config.get(CONF_MIN_TEMP)
         self._max_temp = config.get(CONF_MAX_TEMP)
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
-        # TODO kill from config self._hvac_options = config.get(CONF_HVAC_OPTIONS)
         self._auto_mode = config.get(CONF_AUTO_MODE)
         self._hvac_list = []
         self.min_cycle_duration = config.get(CONF_MIN_CYCLE_DURATION)

@@ -14,7 +14,6 @@ from .const import (
     DEFAULT_HVAC_OPTIONS,
     DEFAULT_AUTO_MODE,
     DEFAULT_MIN_CYCLE_DURATION,
-    MAX_HVAC_OPTIONS,
     AUTO_MODE_OPTIONS,
     INITIAL_HVAC_MODE_OPTIONS,
     INITIAL_HVAC_MODE_OPTIONS_OPTFLOW
@@ -28,7 +27,6 @@ CONF_CENTRAL_CLIMATE = 'central_climate'
 CONF_MIN_CYCLE_DURATION = 'min_cycle_duration'
 CONF_ZONE = 'zone'
 # TODO Per instance, but should be allowed to be overridden?
-CONF_HVAC_OPTIONS = 'hvac_options'
 CONF_AUTO_MODE = 'auto_mode'
 CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
@@ -56,7 +54,6 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_TOLERANCE, default=DEFAULT_TOLERANCE): vol.Coerce(float),
     vol.Required(CONF_CENTRAL_CLIMATE): cv.entity_id,
-    vol.Optional(CONF_HVAC_OPTIONS, default=DEFAULT_HVAC_OPTIONS): vol.In(range(MAX_HVAC_OPTIONS)),
     vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
     vol.Optional(CONF_MIN_CYCLE_DURATION): cv.positive_time_period,
@@ -95,7 +92,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
     elif config_flow_step==3:
         return {
             vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
-            vol.Required(CONF_HVAC_OPTIONS, default=config.get(CONF_HVAC_OPTIONS)):  vol.In(range(MAX_HVAC_OPTIONS)),
             vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS),
             vol.Optional(CONF_MIN_CYCLE_DURATION, default=config.get(CONF_MIN_CYCLE_DURATION)): str
@@ -105,7 +101,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         #this is used for options flow only
         return {
             vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
-            vol.Required(CONF_HVAC_OPTIONS, default=config.get(CONF_HVAC_OPTIONS)):  vol.In(range(MAX_HVAC_OPTIONS)),
             vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS_OPTFLOW),
             vol.Optional(CONF_MIN_CYCLE_DURATION, default=dict_to_string(config.get(CONF_MIN_CYCLE_DURATION))): str
