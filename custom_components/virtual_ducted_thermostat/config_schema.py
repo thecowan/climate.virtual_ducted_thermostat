@@ -38,13 +38,15 @@ CONF_VENT_SWITCH = 'vent_switch'
 CONF_NAME = 'name'
 CONF_ZONE_SENSOR = 'temp_sensor'
 CONF_UNIQUE_ID = 'unique_id'
+CONF_HUMIDITY_SENSOR = 'humidity_sensor'
 
 ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_VENT_SWITCH): cv.entity_ids,
     # TODO: can be optional?
     vol.Required(CONF_NAME): cv.string,
     vol.Required(CONF_ZONE_SENSOR): cv.string,
-    vol.Optional(CONF_UNIQUE_ID): cv.string
+    vol.Optional(CONF_UNIQUE_ID): cv.string,
+    vol.Optional(CONF_HUMIDITY_SENSOR): cv.string
 })
 
 CLIMATE_SCHEMA = {

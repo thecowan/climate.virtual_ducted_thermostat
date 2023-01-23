@@ -59,6 +59,7 @@ from .config_schema import(
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
     CONF_ZONE_SENSOR,
+    CONF_HUMIDITY_SENSOR,
     CONF_UNIQUE_ID
 )
 from .helpers import dict_to_timedelta
@@ -111,6 +112,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self.vent_switch_entity_ids = self._getEntityList(zoneconfig.get(CONF_VENT_SWITCH))
         self.sensor_entity_id = zoneconfig.get(CONF_ZONE_SENSOR)
         self._unique_id = zoneconfig.get(CONF_UNIQUE_ID)
+        self._humidity_sensor_id = zoneconfig.get(CONF_HUMIDITY_SENSOR)
 
         self._tolerance = config.get(CONF_TOLERANCE)
         self._min_temp = config.get(CONF_MIN_TEMP)
@@ -144,6 +146,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
         self._supported_fan_modes = []
         self._fan_mode = None
+        self._cur_humidity = None
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
@@ -159,6 +162,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, self.holder._central_climate, self._async_climate_changed))
+        if self._humidity_sensor_id != None:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, self._humidity_sensor_id, self._async_humidity_changed))
+
 
         @callback
         def _async_startup(event):
@@ -166,6 +174,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             sensor_state = self._getStateSafe(self.sensor_entity_id)
             if sensor_state and sensor_state != STATE_UNKNOWN:
                 self._async_update_temp(sensor_state)
+            if self._humidity_sensor_id != None:
+                humidity_state = self._getStateSafe(self._humidity_sensor_id)
+                if humidity_state and humidity_state != STATE_UNKNOWN:
+                    self._async_update_humidity(humidity_state)
             climate_state = self._getStateSafe(self.holder._central_climate)
             climate_state = self.hass.states.get(self.holder._central_climate)
             if climate_state and climate_state.state != STATE_UNKNOWN:
@@ -365,6 +377,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             return
         self._async_update_temp(new_state.state)
         await self.control_system_mode()
+        await self.async_update_ha_state()
+
+    async def _async_humidity_changed(self, event):
+        """Handle humidity changes."""
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        self._async_update_humidity(new_state.state)
         await self.async_update_ha_state()
 
     # TODO: delete?
@@ -601,6 +621,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.warning("climate.%s - Unable to update current temperature from sensor: %s", self._name, ex)
 
     @callback
+    def _async_update_humidity(self, state):
+        """Update thermostat with latest state from sensor."""
+        try:
+            self._cur_humidity = float(state)
+        except ValueError as ex:
+            _LOGGER.warning("climate.%s - Unable to update current humidity from sensor: %s", self._name, ex)
+
+    @callback
     def _async_restore_program_temp(self):
         """Update thermostat with latest state from sensor to have back automatic value."""
         try:
@@ -638,6 +666,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     def current_temperature(self):
         """Return the sensor temperature."""
         return self._cur_temp
+
+    @property
+    def current_humidity(self):
+        """Return the sensor humidity."""
+        return self._cur_humidity
 
     @property
     def hvac_mode(self):
