@@ -147,6 +147,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._supported_fan_modes = []
         self._fan_mode = None
         self._cur_humidity = None
+        self._initialized_options = False
+        self._awaiting_climate_state = False
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
@@ -180,25 +182,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                     self._async_update_humidity(humidity_state)
             climate_state = self._getStateSafe(self.holder._central_climate)
             climate_state = self.hass.states.get(self.holder._central_climate)
-            if climate_state and climate_state.state != STATE_UNKNOWN:
-                _LOGGER.debug("climate.%s got climate state %s during async_startup", self._name, climate_state)
-                # TODO: handle heat_cool specially
-                for mode in climate_state.attributes['hvac_modes']:
-                    if mode == HVAC_MODE_OFF:
-                        # Skip
-                        pass
-                    else:
-                        # TODO: move this to the enum
-                        self._hvac_list.append(str(mode))
-                _LOGGER.debug("climate.%s my supported modes now %s", self._name, self._hvac_list)
-                
-                if (climate_state.attributes['supported_features'] & ClimateEntityFeature.FAN_MODE) != 0:
-                    self._supported_features |= ClimateEntityFeature.FAN_MODE
-                    # TODO don't hardcode this!
-                    self._supported_fan_modes = [mode for mode in climate_state.attributes['fan_modes'] if "/" not in mode]
-                    #self._supported_fan_modes = climate_state.attributes['fan_modes']
-                    self._fan_mode = climate_state.attributes['fan_mode']
-                    _LOGGER.debug("climate.%s my supported fan modes now %s, initial mode %s", self._name, self._supported_fan_modes, self._fan_mode)
+            if climate_state and climate_state.state != STATE_UNKNOWN and not self._initialized_options:
+                self._initialize_options(climate_state)
 
             #TODO
             #target_state = self._getStateSafe(self.target_entity_id)
@@ -244,6 +229,27 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         # Set default state to off
         if not self._hvac_mode:
             self._hvac_mode = HVAC_MODE_OFF
+
+    def _initialize_options(self, climate_state):
+        _LOGGER.debug("climate.%s initializing options based on state %s", self._name, climate_state)
+        # TODO: handle heat_cool specially
+        for mode in climate_state.attributes['hvac_modes']:
+            if mode == HVAC_MODE_OFF:
+                # Skip
+                pass
+            else:
+                # TODO: move this to the enum
+                self._hvac_list.append(str(mode))
+        _LOGGER.debug("climate.%s my supported modes now %s", self._name, self._hvac_list)
+
+        if (climate_state.attributes['supported_features'] & ClimateEntityFeature.FAN_MODE) != 0:
+            self._supported_features |= ClimateEntityFeature.FAN_MODE
+            # TODO don't hardcode this!
+            self._supported_fan_modes = [mode for mode in climate_state.attributes['fan_modes'] if "/" not in mode]
+            #self._supported_fan_modes = climate_state.attributes['fan_modes']
+            self._fan_mode = climate_state.attributes['fan_mode']
+            _LOGGER.debug("climate.%s my supported fan modes now %s, initial mode %s", self._name, self._supported_fan_modes, self._fan_mode)
+        self._initialized_options = True
 
     async def control_system_mode(self):
         """this is used to decide what to do, so this function turn off switches and run the function
@@ -581,6 +587,32 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         new_state = event.data.get("new_state")
         if new_state is None:
             return
+        _LOGGER.debug("climate.%s - Got a new switch state %s, I'm %s", self._name, new_state, self._hvac_mode)
+        if new_state.state == STATE_ON and self._hvac_mode == HVAC_MODE_OFF:
+            _LOGGER.debug("climate.%s - I was off, but switch %s has been opened - updating my state", self._name, event.data['entity_id'])
+            to_open = []
+            for switch in self.vent_switch_entity_ids:
+                if switch == event.data['entity_id']:
+                    continue
+                switch_state = self._getStateSafe(switch)
+                if switch_state and switch_state != STATE_OFF:
+                    to_open.append(switch)
+            if len(to_open) > 0:
+                _LOGGER.debug("climate.%s - opening peer switches %s to match", self._name, to_open)
+                self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: to_open})
+
+            climate_state = self._getStateSafe(self.holder._central_climate)
+            if climate_state is None:
+                _LOGGER.debug("climate.%s - climate has no state, waiting to see state update later", self._name)
+                self._awaiting_climate_state = True
+            elif climate_state.state == HVAC_MODE_OFF:
+                # TODO
+                _LOGGER.debug("climate.%s - something's opened my vent, but climate is off. Spooky! Not sure what to do.", self._name)
+            else:
+                _LOGGER.debug("climate.%s - vent now open, setting my state to %s", self._name, climate_state.state)
+                self._hvac_mode = climate_state.state
+                self._set_hvac_action_on(self.hvac_mode)
+
         self.async_write_ha_state()
 
     @callback
@@ -589,15 +621,33 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         new_state = event.data.get("new_state")
         if new_state is None:
             return
+        if new_state != STATE_UNKNOWN and not self._initialized_options:
+            self._initialize_options(new_state)
+
         central_state = new_state.state
+        # Should we update our state in response?
+        # TODO: implement this as an option
+        should_follow = False
+
+        if self._awaiting_climate_state:
+            if central_state == HVAC_MODE_OFF:
+                _LOGGER.debug("climate.%s - been waiting to climate state for open vent but it's off. Guess I'll keep waiting?", self._name)
+            else:
+                _LOGGER.debug("climate.%s - finally received climate_state %s, will update myself", self._name, central_state)
+                should_follow = True
+                self._awaiting_climate_state = False
+
         my_state = self._hvac_mode
         _LOGGER.debug("climate.%s - New state from climate %s (vs my %s)", self._name, central_state, my_state)
+
         # TODO: check logic here - should this be based on switch state? Or should that just be checked on startup?
         if (central_state == my_state):
-          _LOGGER.debug("climate.%s - No change, nothing to do", self._name)
+            _LOGGER.debug("climate.%s - No change, nothing to do", self._name)
+        elif should_follow:
+            _LOGGER.debug("climate.%s - Been told to follow this state change, updating myself", self._name)
+            await self.async_set_hvac_mode(central_state)
         elif (my_state == HVAC_MODE_OFF):
           _LOGGER.debug("climate.%s - I'm already off, nothing to do", self._name)
-        # TODO - implement "follow"
         else:
           _LOGGER.debug("climate.%s - Guess I'll turn myself off", self._name)
           await self.async_set_hvac_mode(HVAC_MODE_OFF)
