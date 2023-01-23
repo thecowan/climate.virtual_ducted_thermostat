@@ -60,7 +60,9 @@ from .config_schema import(
     CONF_ZONE,
     CONF_ZONE_SENSOR,
     CONF_HUMIDITY_SENSOR,
-    CONF_UNIQUE_ID
+    CONF_UNIQUE_ID,
+    DEFAULT_MIN_TEMP,
+    DEFAULT_MAX_TEMP
 )
 from .helpers import dict_to_timedelta
 
@@ -115,8 +117,17 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._humidity_sensor_id = zoneconfig.get(CONF_HUMIDITY_SENSOR)
 
         self._tolerance = config.get(CONF_TOLERANCE)
+        self._clone_min = False
+        self._clone_max = False
         self._min_temp = config.get(CONF_MIN_TEMP)
+        if self._min_temp == None:
+            self._clone_min = True
+            self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = config.get(CONF_MAX_TEMP)
+        if self._max_temp == None:
+            self._clone_max = True
+            self._max_temp = DEFAULT_MAX_TEMP
+
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
         self._auto_mode = config.get(CONF_AUTO_MODE)
         self._hvac_list = []
@@ -249,6 +260,23 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             #self._supported_fan_modes = climate_state.attributes['fan_modes']
             self._fan_mode = climate_state.attributes['fan_mode']
             _LOGGER.debug("climate.%s my supported fan modes now %s, initial mode %s", self._name, self._supported_fan_modes, self._fan_mode)
+
+        if self._clone_min:
+            climate_temp = climate_state.attributes['min_temp']
+            if climate_temp == None:
+              _LOGGER.debug("climate.%s didn't get a min temp in config, but central doesn't have one either", self._name)
+            else:
+              _LOGGER.debug("climate.%s didn't get a min temp in config, copying from central climate (%s)", self._name, climate_temp)
+            self._min_temp = float(climate_temp)
+
+        if self._clone_max:
+            climate_temp = climate_state.attributes['max_temp']
+            if climate_temp == None:
+              _LOGGER.debug("climate.%s didn't get a max temp in config, but central doesn't have one either", self._name)
+            else:
+              _LOGGER.debug("climate.%s didn't get a max temp in config, copying from central climate (%s)", self._name, climate_temp)
+            self._max_temp = float(climate_temp)
+
         self._initialized_options = True
 
     async def control_system_mode(self):
