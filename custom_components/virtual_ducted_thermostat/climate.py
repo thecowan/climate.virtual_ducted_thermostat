@@ -116,14 +116,22 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._unique_id = zoneconfig.get(CONF_UNIQUE_ID)
         self._humidity_sensor_id = zoneconfig.get(CONF_HUMIDITY_SENSOR)
 
-        self._tolerance = config.get(CONF_TOLERANCE)
+        self._tolerance = zoneconfig.get(CONF_TOLERANCE)
+        if self._tolerance == None:
+          self._tolerance = config.get(CONF_TOLERANCE)
+
         self._clone_min = False
         self._clone_max = False
-        self._min_temp = config.get(CONF_MIN_TEMP)
+        self._min_temp = zoneconfig.get(CONF_MIN_TEMP)
+        if self._min_temp == None:
+            self._min_temp = config.get(CONF_MIN_TEMP)
         if self._min_temp == None:
             self._clone_min = True
             self._min_temp = DEFAULT_MIN_TEMP
-        self._max_temp = config.get(CONF_MAX_TEMP)
+
+        self._max_temp = zoneconfig.get(CONF_MAX_TEMP)
+        if self._max_temp == None:
+            self._max_temp = config.get(CONF_MAX_TEMP)
         if self._max_temp == None:
             self._clone_max = True
             self._max_temp = DEFAULT_MAX_TEMP
