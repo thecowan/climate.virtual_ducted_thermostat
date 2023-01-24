@@ -136,8 +136,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._clone_max = True
             self._max_temp = DEFAULT_MAX_TEMP
 
+        self._auto_mode = zoneconfig.get(CONF_AUTO_MODE)
+        if self._auto_mode == None:
+            self._auto_mode = config.get(CONF_AUTO_MODE)
+
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
-        self._auto_mode = config.get(CONF_AUTO_MODE)
         self._hvac_list = []
         self.min_cycle_duration = config.get(CONF_MIN_CYCLE_DURATION)
         if type(self.min_cycle_duration) == type({}):
