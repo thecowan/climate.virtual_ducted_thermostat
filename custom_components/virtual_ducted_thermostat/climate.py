@@ -662,6 +662,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             await self.async_set_hvac_mode(central_state)
         elif (my_state == HVAC_MODE_OFF):
           _LOGGER.debug("climate.%s - I'm already off, nothing to do", self._name)
+        elif (central_state == HVAC_MODE_OFF):
+          # TODO - determine if it turned off manually or because of us
+          _LOGGER.debug("climate.%s - central turned off, but I'll stay running", self._name)
         else:
           _LOGGER.debug("climate.%s - Guess I'll turn myself off", self._name)
           await self.async_set_hvac_mode(HVAC_MODE_OFF)
