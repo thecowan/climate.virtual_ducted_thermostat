@@ -148,7 +148,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         # self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
         # TODO
         self._target_temp = float((self._min_temp + self._max_temp)/2)
-        self._restore_temp = self._target_temp
         self._cur_temp = self._getFloat(self._getStateSafe(self.sensor_entity_id), self._target_temp)
         self._active = False
         self._temp_lock = asyncio.Lock()
@@ -268,7 +267,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._supported_features |= ClimateEntityFeature.FAN_MODE
             # TODO don't hardcode this!
             self._supported_fan_modes = [mode for mode in climate_state.attributes['fan_modes'] if "/" not in mode]
-            #self._supported_fan_modes = climate_state.attributes['fan_modes']
             self._fan_mode = climate_state.attributes['fan_mode']
             _LOGGER.debug("climate.%s my supported fan modes now %s, initial mode %s", self._name, self._supported_fan_modes, self._fan_mode)
 
@@ -304,17 +302,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         elif self._hvac_mode == HVAC_MODE_HEAT:
             _LOGGER.debug("climate.%s set to heat", self._name)
             await self._async_control_thermo(mode="heat")
-            #for opmod in self._hvac_list:
-            #    if opmod is HVAC_MODE_COOL and not self._are_entities_same:
-            #        await self._async_turn_off(mode="cool", forced=True)
-            #        return
         elif self._hvac_mode == HVAC_MODE_COOL:
             _LOGGER.debug("climate.%s set to cool", self._name)
             await self._async_control_thermo(mode="cool")
-            #for opmod in self._hvac_list:
-            #    if opmod is HVAC_MODE_HEAT and not self._are_entities_same:
-            #        await self._async_turn_off(mode="heat", forced=True)
-            #        return
         elif self._hvac_mode == HVAC_MODE_HEAT_COOL:
             _LOGGER.debug("climate.%s set to auto", self._name)
             for opmod in self._hvac_list:
@@ -387,8 +377,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             return
 
         self._hvac_mode = hvac_mode
-        if hvac_mode == HVAC_MODE_HEAT_COOL:
-            self._async_restore_program_temp()
         await self.control_system_mode()
         # Ensure we update the current operation after changing the mode
         self.async_write_ha_state()
@@ -430,19 +418,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         if new_state is None:
             return
         self._async_update_humidity(new_state.state)
-        await self.async_update_ha_state()
-
-    # TODO: delete?
-    async def _async_target_changed(self, event):
-        """Handle temperature changes in the program."""
-        new_state = event.data.get("new_state")
-        if new_state is None:
-            return
-        self._restore_temp = float(new_state.state)
-        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            # TODO: delete?
-            self._async_restore_program_temp()
-        await self.control_system_mode()
         await self.async_update_ha_state()
 
     async def _async_control_thermo(self, mode=None):
@@ -716,17 +691,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             self._cur_humidity = float(state)
         except ValueError as ex:
             _LOGGER.warning("climate.%s - Unable to update current humidity from sensor: %s", self._name, ex)
-
-    @callback
-    def _async_restore_program_temp(self):
-        """Update thermostat with latest state from sensor to have back automatic value."""
-        try:
-            if self._restore_temp is not None:
-                self._target_temp = self._restore_temp
-            #else:
-            #    self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
-        except ValueError as ex:
-            _LOGGER.warning("climate.%s - Unable to restore program temperature from sensor: %s", self._name, ex)
 
     @callback
     def _async_update_program_temp(self, state):
