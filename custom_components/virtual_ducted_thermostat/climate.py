@@ -585,7 +585,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 if switch == event.data['entity_id']:
                     continue
                 switch_state = self._getStateSafe(switch)
-                if switch_state and switch_state != STATE_OFF:
+                if switch_state and switch_state == STATE_OFF:
                     to_open.append(switch)
             if len(to_open) > 0:
                 _LOGGER.debug("climate.%s - opening peer switches %s to match", self._name, to_open)
