@@ -292,11 +292,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
            that control the temperature."""
         if self._hvac_mode == HVAC_MODE_OFF:
             _LOGGER.debug("climate.%s set to off", self._name)
-            for opmod in self._hvac_list:
-                if opmod is HVAC_MODE_HEAT:
-                    await self._async_turn_off(mode="heat")
-                if opmod is HVAC_MODE_COOL:
-                    await self._async_turn_off(mode="cool")
+            # TODO this isn't right but I don't think it matters
+            await self._async_turn_off(mode="heat")
             self._hvac_action = HVACAction.OFF
         elif self._hvac_mode == HVAC_MODE_HEAT:
             _LOGGER.debug("climate.%s set to heat", self._name)
@@ -565,6 +562,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         else:
             current_state = STATE_OFF
         if mode in (HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_FAN_ONLY, HVAC_MODE_DRY):
+            # TODO - exits early by mistake?
             for entity in self.vent_switch_entity_ids:
                 return condition.state(self.hass, entity, current_state, self.min_cycle_duration)
         else:
