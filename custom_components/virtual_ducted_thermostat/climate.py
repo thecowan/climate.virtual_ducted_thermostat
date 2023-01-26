@@ -294,9 +294,9 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.debug("climate.%s set to off", self._name)
             for opmod in self._hvac_list:
                 if opmod is HVAC_MODE_HEAT:
-                    await self._async_turn_off(mode="heat", forced=True)
+                    await self._async_turn_off(mode="heat")
                 if opmod is HVAC_MODE_COOL:
-                    await self._async_turn_off(mode="cool", forced=True)
+                    await self._async_turn_off(mode="cool")
             self._hvac_action = HVACAction.OFF
         elif self._hvac_mode == HVAC_MODE_HEAT:
             _LOGGER.debug("climate.%s set to heat", self._name)
@@ -336,7 +336,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             _LOGGER.error("climate.%s - No type has been passed to turn_on function", self._name)
             return
 
-        if not self._is_device_active_function(forced=False) and not self.is_active_long_enough(mode=mode):
+        if not self._is_device_active_function() and not self.is_active_long_enough(mode=mode):
             _LOGGER.error("climate.%s - can't turn on, device not active long enough", self._name)
             # TODO - reschedule?
             return
@@ -347,7 +347,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
         await self.async_update_ha_state()
 
-    async def _async_turn_off(self, mode=None, forced=False):
+    async def _async_turn_off(self, mode=None):
         """Turn heater toggleable device off."""
         # central_climate_hvac_action = self.hass.states.get(self.holder._central_climate).attributes['hvac_action']
         # TODO if central_climate_hvac_action == CURRENT_HVAC_HEAT or central_climate_hvac_action == CURRENT_HVAC_COOL:
@@ -361,8 +361,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         #    central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_HVAC_MODE: HVAC_MODE_OFF}
         #else:
         #    _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
-        self._check_mode_type = mode
-        if self._is_device_active_function(forced=forced) and self.is_active_long_enough(mode=mode):
+        if self._is_device_active_function() and self.is_active_long_enough(mode=mode):
             self._set_hvac_action_off(mode=mode)
             # TODO: don't seem to be turning off?
             await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_OFF, vent_data)
@@ -439,8 +438,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             entities = self.vent_switch_entity_ids
         else:
             _LOGGER.error("climate.%s - No type has been passed to control_thermo function", self._name)
-        # TODO - check what this is for?
-        self._check_mode_type = mode
         async with self._temp_lock:
             if not self._active and None not in (self._cur_temp,
                                                  self._target_temp):
@@ -467,8 +464,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     async def _async_control_non_thermo(self):
         _LOGGER.debug("climate.%s - Entering non-thermo control, mode %s", self._name, self._hvac_mode)
         entities = self.vent_switch_entity_ids
-        # TODO - check what this is for?
-        self._check_mode_type = self._hvac_mode
         async with self._temp_lock:
             if self._hvac_mode == HVAC_MODE_OFF:
                 return
@@ -510,8 +505,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if abs(delta) >= self._tolerance and entities != None:
                 self._set_hvac_action_on(mode=mode_2)
         else:
-            #if self._are_entities_same and not self._is_device_active_function(forced=False):
-            if not self._is_device_active_function(forced=False):
+            if not self._is_device_active_function():
                 self._hvac_action = HVACAction.OFF
             else:
                 _LOGGER.error("climate.%s - Error during set of HVAC_ACTION", self._name)
@@ -557,27 +551,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         return True
 
 
-    # TODO: check this?
-    def _is_device_active_function(self, forced):
+    def _is_device_active_function(self):
         """If the toggleable device is currently active."""
-        _LOGGER.debug("climate.%s - \r\nvent switches: %s \r\n_check_mode_type: %s \r\n_hvac_mode: %s \r\nforced: %s", self._name, self.vent_switch_entity_ids, self._check_mode_type, self._hvac_mode, forced)
-        if not forced:
-            _LOGGER.debug("climate.%s - 410- enter in classic mode: %s", self._name, forced)
-            # TODO _check_mode_type was used here, check if it's still valid/needed
-            # TODO - should this check underlying state?
-            return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-        else:
-            _LOGGER.debug("climate.%s - 433- enter in forced mode: %s", self._name, forced)
-            if self._check_mode_type == "heat":
-                # TODO
-                _LOGGER.debug("climate.%s - 435 - vent switches: %s", self._name, self.vent_switch_entity_ids)
-                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-            elif self._check_mode_type == "cool":
-                # TODO
-                _LOGGER.debug("climate.%s - 435 - vent switches: %s", self._name, self.vent_switch_entity_ids)
-                return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
-            else:
-                return False
+        _LOGGER.debug("climate.%s - vent switches: %s", self._name, self.vent_switch_entity_ids)
+        return self._areAllInState(self.vent_switch_entity_ids, STATE_ON)
 
     def is_active_long_enough(self, mode=None):
         """ This function is to check if the heater/cooler has been active long enough """
@@ -612,7 +589,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                     to_open.append(switch)
             if len(to_open) > 0:
                 _LOGGER.debug("climate.%s - opening peer switches %s to match", self._name, to_open)
-                self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: to_open})
+                await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: to_open})
 
             climate_state = self._getStateSafe(self.holder._central_climate)
             if climate_state is None:
@@ -768,7 +745,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     @property
     def _is_device_active(self):
         """If the toggleable device is currently active."""
-        return self._is_device_active_function(forced=False)
+        return self._is_device_active_function()
 
     @property
     def supported_features(self):
