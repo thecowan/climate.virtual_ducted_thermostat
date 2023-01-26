@@ -595,7 +595,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         return True
 
     @callback
-    def _async_switch_changed(self, event):
+    async def _async_switch_changed(self, event):
         """Handle climate switch state changes."""
         new_state = event.data.get("new_state")
         if new_state is None:
@@ -622,9 +622,14 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 # TODO
                 _LOGGER.debug("climate.%s - something's opened my vent, but climate is off. Spooky! Not sure what to do.", self._name)
             else:
-                _LOGGER.debug("climate.%s - vent now open, setting my state to %s", self._name, climate_state.state)
-                self._hvac_mode = climate_state.state
+                _LOGGER.debug("climate.%s - vent now open, setting my state to %s", self._name, climate_state)
+                self._hvac_mode = climate_state
                 self._set_hvac_action_on(self.hvac_mode)
+        elif new_state.state == STATE_OFF and self._hvac_mode != HVAC_MODE_OFF:
+            _LOGGER.debug("climate.%s - I was in mode %s, but switch %s has been closed - turning myself off", self._name, self._hvac_mode, event.data['entity_id'])
+            self._hvac_mode = HVAC_MODE_OFF
+            await self.control_system_mode()
+
 
         self.async_write_ha_state()
 
