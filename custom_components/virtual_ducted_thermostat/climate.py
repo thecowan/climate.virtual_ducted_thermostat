@@ -201,7 +201,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 humidity_state = self._getStateSafe(self._humidity_sensor_id)
                 if humidity_state and humidity_state != STATE_UNKNOWN:
                     self._async_update_humidity(humidity_state)
-            climate_state = self._getStateSafe(self.holder._central_climate)
             climate_state = self.hass.states.get(self.holder._central_climate)
             if climate_state and climate_state.state != STATE_UNKNOWN and not self._initialized_options:
                 self._initialize_options(climate_state)
@@ -619,7 +618,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if climate_state is None:
                 _LOGGER.debug("climate.%s - climate has no state, waiting to see state update later", self._name)
                 self._awaiting_climate_state = True
-            elif climate_state.state == HVAC_MODE_OFF:
+            elif climate_state == HVAC_MODE_OFF:
                 # TODO
                 _LOGGER.debug("climate.%s - something's opened my vent, but climate is off. Spooky! Not sure what to do.", self._name)
             else:
