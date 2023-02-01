@@ -360,7 +360,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         #    _LOGGER.error("climate.%s - No type has been passed to turn_off function", self._name)
         if self._is_device_active_function() and self.is_active_long_enough(mode=mode):
             self._set_hvac_action_off(mode=mode)
-            # TODO: don't seem to be turning off?
             await self.hass.services.async_call(HA_DOMAIN, SERVICE_TURN_OFF, vent_data)
             #await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_HVAC_MODE, central_data)
             await self.async_update_ha_state()
@@ -492,12 +491,11 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         if (((mode == "cool" and not self._hvac_mode == HVAC_MODE_HEAT) or \
            (mode == "heat" and not self._hvac_mode == HVAC_MODE_COOL)) and \
            not self._hvac_mode == HVAC_MODE_HEAT_COOL):
-            # TODO: true, or idle?
-            self._hvac_action = HVACAction.OFF
+            self._hvac_action = HVACAction.IDLE
             _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
         elif self._hvac_mode == HVAC_MODE_HEAT_COOL and delta <= 0:
             # TODO: true, or off?
-            self._hvac_action = HVACAction.OFF
+            self._hvac_action = HVACAction.IDLE
             _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
             if abs(delta) >= self._tolerance and entities != None:
                 self._set_hvac_action_on(mode=mode_2)
@@ -601,9 +599,12 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 self._hvac_mode = climate_state
                 self._set_hvac_action_on(self.hvac_mode)
         elif new_state.state == STATE_OFF and self._hvac_mode != HVAC_MODE_OFF:
-            _LOGGER.debug("climate.%s - I was in mode %s, but switch %s has been closed - turning myself off", self._name, self._hvac_mode, event.data['entity_id'])
-            self._hvac_mode = HVAC_MODE_OFF
-            await self.control_system_mode()
+            if self._hvac_action == HVACAction.IDLE:
+                _LOGGER.debug("climate.%s - I was in mode %s, but switch %s has been closed - I'm idling though, that's OK", self._name, self._hvac_mode, event.data['entity_id'])
+            else:
+                _LOGGER.debug("climate.%s - I was in mode %s, but switch %s has been closed - turning myself off", self._name, self._hvac_mode, event.data['entity_id'])
+                self._hvac_mode = HVAC_MODE_OFF
+                await self.control_system_mode()
 
 
         self.async_write_ha_state()
