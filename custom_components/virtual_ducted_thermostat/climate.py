@@ -146,7 +146,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         if type(self.min_cycle_duration) == type({}):
             self.min_cycle_duration = dict_to_timedelta(self.min_cycle_duration)
         # self._target_temp = self._getFloat(self._getStateSafe(self.target_entity_id), None)
-        # TODO
+        self._target_temp_set = False
         self._target_temp = float((self._min_temp + self._max_temp)/2)
         self._cur_temp = self._getFloat(self._getStateSafe(self.sensor_entity_id), self._target_temp)
         self._active = False
@@ -220,7 +220,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         _LOGGER.info("climate.%s old state: %s", self._name, old_state)
         if old_state is not None:
             # If we have no initial temperature, restore
-            if self._target_temp is None:
+            if not self._target_temp_set:
                 # If we have a previously saved temperature
                 if old_state.attributes.get(ATTR_TEMPERATURE) is None:
                     #target_entity_state = self._getStateSafe(self.target_entity_id)
@@ -231,6 +231,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                     _LOGGER.warning("climate.%s - Undefined target temperature,"
                                     "falling back to %s", self._name , self._target_temp)
                 else:
+                    self._target_temp_set = True
                     self._target_temp = float(
                         old_state.attributes[ATTR_TEMPERATURE])
             if (self._initial_hvac_mode is None and
@@ -241,7 +242,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
         else:
             # No previous state, try and restore defaults
-            if self._target_temp is None:
+            if not self._target_temp_set:
                 self._target_temp = float((self._min_temp + self._max_temp)/2)
             _LOGGER.warning("climate.%s - No previously saved temperature, setting to %s", self._name,
                             self._target_temp)
@@ -380,6 +381,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
+        self._target_temp_set = True
         self._target_temp = float(temperature)
         await self.control_system_mode()
         await self.async_update_ha_state()
@@ -679,6 +681,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
     def _async_update_program_temp(self, state):
         """Update thermostat with latest state from sensor."""
         try:
+            self._target_temp_set = True
             self._target_temp = float(state)
         except ValueError as ex:
             _LOGGER.warning("climate.%s - Unable to update target temperature from sensor: %s", self._name, ex)
