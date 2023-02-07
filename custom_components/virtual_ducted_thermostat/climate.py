@@ -53,6 +53,7 @@ from .config_schema import(
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TOLERANCE,
+    CONF_PARASITIC_TOLERANCE,
     CONF_INITIAL_HVAC_MODE,
     CONF_CENTRAL_CLIMATE,
     CONF_AUTO_MODE,
@@ -119,6 +120,12 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         self._tolerance = zoneconfig.get(CONF_TOLERANCE)
         if self._tolerance == None:
           self._tolerance = config.get(CONF_TOLERANCE)
+
+        self._parasitic_tolerance = zoneconfig.get(CONF_PARASITIC_TOLERANCE)
+        if self._parasitic_tolerance == None:
+          self._parasitic_tolerance = config.get(CONF_PARASITIC_TOLERANCE)
+        if self._parasitic_tolerance == None:
+          self._parasitic_tolerance = self._tolerance
 
         self._clone_min = False
         self._clone_max = False
@@ -447,13 +454,15 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             if not self._active or self._hvac_mode == HVAC_MODE_OFF or self._hvac_mode == hvac_mode:
                 return
 
+            effective_tolerance = self._parasitic_tolerance if self._is_any_peer_active() else self._tolerance
+
             # TODO - not actually opening here?
             if delta <= 0:
                 if not self._areAllInState(entities, STATE_OFF):
                     _LOGGER.debug("Turning off %s", entities)
                     await self._async_turn_off(mode=mode)
                 self._set_hvac_action_off(mode=mode)
-            elif delta >= self._tolerance:
+            elif delta >= effective_tolerance:
                 self._set_hvac_action_on(mode=mode)
                 if not self._areAllInState(entities, STATE_ON):
                     _LOGGER.debug("Turning on %s", entities)
@@ -499,7 +508,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             # TODO: true, or off?
             self._hvac_action = HVACAction.IDLE
             _LOGGER.debug("climate.%s - new action %s", self._name, self._hvac_action)
-            if abs(delta) >= self._tolerance and entities != None:
+            effective_tolerance = self._parasitic_tolerance if self._is_any_peer_active() else self._tolerance
+            if abs(delta) >= effective_tolerance and entities != None:
                 self._set_hvac_action_on(mode=mode_2)
         else:
             if not self._is_device_active_function():
@@ -568,6 +578,16 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         else:
             _LOGGER.error("Wrong mode have been passed to function is_active_long_enough")
         return True
+
+    def _is_any_peer_active(self):
+        """Returns True if any of the other peers (apart from us) are running."""
+        for climate in self.holder.climate_entities:
+            if climate is self:
+                continue
+            if climate._hvac_action not in [HVACAction.IDLE, HVACAction.OFF]:
+                return True
+        return False
+
 
     @callback
     async def _async_switch_changed(self, event):

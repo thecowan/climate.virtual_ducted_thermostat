@@ -32,6 +32,7 @@ CONF_INITIAL_HVAC_MODE = 'initial_hvac_mode'
 CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
 CONF_TOLERANCE = 'tolerance'
+CONF_PARASITIC_TOLERANCE = 'parasitic_tolerance'
 CONF_AUTO_MODE = 'auto_mode'
 
 # Per-zone
@@ -51,6 +52,7 @@ ZONE_SCHEMA = vol.Schema({
     vol.Optional(CONF_MAX_TEMP): vol.Coerce(float),
     vol.Optional(CONF_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_TOLERANCE): vol.Coerce(float),
+    vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float),
     vol.Optional(CONF_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
 })
 
@@ -59,6 +61,7 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_TOLERANCE, default=DEFAULT_TOLERANCE): vol.Coerce(float),
+    vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float),
     vol.Required(CONF_CENTRAL_CLIMATE): cv.entity_id,
     vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
