@@ -262,11 +262,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         _LOGGER.debug("climate.%s initializing options based on state %s", self._name, climate_state)
         # TODO: handle heat_cool specially
         for mode in climate_state.attributes['hvac_modes']:
-            if mode == HVAC_MODE_OFF:
+            if mode in self._hvac_list:
                 # Skip
                 pass
             else:
-                # TODO: move this to the enum
                 self._hvac_list.append(str(mode))
         _LOGGER.debug("climate.%s my supported modes now %s", self._name, self._hvac_list)
 
