@@ -31,3 +31,4 @@ REGEX_STRING = r'((?P<hours>\d+?):(?=(\d+?:\d+?)))?((?P<minutes>\d+?):)?((?P<sec
 #Attributes
 ATTR_VENT_SWITCH_IDS = "vent_switch_ids"
 ATTR_SENSOR_ID = "sensor_id"
+ATTR_PRESET_TEMPERATURES = "preset_temperatures"

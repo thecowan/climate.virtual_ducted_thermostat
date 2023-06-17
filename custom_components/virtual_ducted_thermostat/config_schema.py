@@ -27,6 +27,7 @@ CONF_MIN_CYCLE_DURATION = 'min_cycle_duration'
 CONF_ZONE = 'zone'
 # TODO Still needed?
 CONF_INITIAL_HVAC_MODE = 'initial_hvac_mode'
+CONF_PRESET_MODES = 'preset_modes'
 
 # Per-instance, but overridable
 CONF_MIN_TEMP = 'min_temp'
@@ -53,7 +54,7 @@ ZONE_SCHEMA = vol.Schema({
     vol.Optional(CONF_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_TOLERANCE): vol.Coerce(float),
     vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float),
-    vol.Optional(CONF_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
+    vol.Optional(CONF_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS)
 })
 
 CLIMATE_SCHEMA = {
@@ -66,6 +67,7 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
     vol.Optional(CONF_MIN_CYCLE_DURATION): cv.positive_time_period,
+    vol.Optional(CONF_PRESET_MODES): vol.All(cv.ensure_list, [cv.string]),
     vol.Required(CONF_ZONE): vol.All(cv.ensure_list, [ZONE_SCHEMA])
 }
 

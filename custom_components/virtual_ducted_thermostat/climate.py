@@ -18,7 +18,8 @@ from homeassistant.components.climate.const import (
     SERVICE_SET_FAN_MODE,
     SERVICE_SET_HVAC_MODE,
     ATTR_HVAC_MODE,
-    ATTR_FAN_MODE
+    ATTR_FAN_MODE,
+    PRESET_NONE
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -45,7 +46,8 @@ from .const import (
     DOMAIN,
     PLATFORM,
     ATTR_VENT_SWITCH_IDS,
-    ATTR_SENSOR_ID
+    ATTR_SENSOR_ID,
+    ATTR_PRESET_TEMPERATURES
 )
 from .config_schema import(
     CLIMATE_SCHEMA,
@@ -57,6 +59,7 @@ from .config_schema import(
     CONF_INITIAL_HVAC_MODE,
     CONF_CENTRAL_CLIMATE,
     CONF_AUTO_MODE,
+    CONF_PRESET_MODES,
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
     CONF_ZONE_SENSOR,
@@ -173,6 +176,16 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
         self._supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
         self._supported_fan_modes = []
+
+        self._supported_preset_modes = [PRESET_NONE]
+        self._preset_mode = PRESET_NONE
+        if config.get(CONF_PRESET_MODES):
+          self._supported_preset_modes.extend(config.get(CONF_PRESET_MODES))
+          self._supported_features |= ClimateEntityFeature.PRESET_MODE
+
+        self._target_temp_map = dict()
+        self._target_temp_map[PRESET_NONE] = self._target_temp
+
         self._fan_mode = None
         self._cur_humidity = None
         self._initialized_options = False
@@ -226,21 +239,24 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         old_state = await self.async_get_last_state()
         _LOGGER.info("climate.%s old state: %s", self._name, old_state)
         if old_state is not None:
+            if old_state.attributes.get(ATTR_PRESET_TEMPERATURES) is not None:
+                _LOGGER.warning("climate.%s - Restoring presets map %s", self._name, old_state.attributes[ATTR_PRESET_TEMPERATURES])
+                self._target_temp_map = old_state.attributes[ATTR_PRESET_TEMPERATURES]
             # If we have no initial temperature, restore
             if not self._target_temp_set:
-                # If we have a previously saved temperature
-                if old_state.attributes.get(ATTR_TEMPERATURE) is None:
-                    #target_entity_state = self._getStateSafe(self.target_entity_id)
-                    #if target_entity_state is not None:
-                    #    self._target_temp = float(target_entity_state)
-                    #else:
-                    self._target_temp = float((self._min_temp + self._max_temp)/2)
-                    _LOGGER.warning("climate.%s - Undefined target temperature,"
-                                    "falling back to %s", self._name , self._target_temp)
-                else:
+                if PRESET_NONE in self._target_temp_map:
+                    self._target_temp_set = True
+                    self._target_temp = self._target_temp_map[PRESET_NONE]
+                elif ATTR_TEMPERATURE in old_state.attributes:
+                    # Legacy mode, shouldn't happen any more
                     self._target_temp_set = True
                     self._target_temp = float(
                         old_state.attributes[ATTR_TEMPERATURE])
+                else:
+                    self._target_temp = float((self._min_temp + self._max_temp)/2)
+                    _LOGGER.warning("climate.%s - Undefined target temperature,"
+                                    "falling back to %s", self._name , self._target_temp)
+                self._target_temp_map[PRESET_NONE] = self._target_temp
             if (self._initial_hvac_mode is None and
                     old_state.state is not None):
                 self._hvac_mode = \
@@ -253,6 +269,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 self._target_temp = float((self._min_temp + self._max_temp)/2)
             _LOGGER.warning("climate.%s - No previously saved temperature, setting to %s", self._name,
                             self._target_temp)
+            self._target_temp_map[PRESET_NONE] = self._target_temp
 
         # Set default state to off
         if not self._hvac_mode:
@@ -389,6 +406,7 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
             return
         self._target_temp_set = True
         self._target_temp = float(temperature)
+        self._target_temp_map[self._preset_mode] = self._target_temp
         await self.control_system_mode()
         await self.async_update_ha_state()
 
@@ -403,7 +421,25 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         central_data = {ATTR_ENTITY_ID: self.holder._central_climate, ATTR_FAN_MODE: fan_mode}
         await self.hass.services.async_call(CLIMATE_DOMAIN, SERVICE_SET_FAN_MODE, central_data)
         await self.async_update_ha_state()
-        self.async_update_ha_state()
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set preset mode."""
+        if preset_mode not in self._supported_preset_modes:
+            _LOGGER.error("climate.%s - Unrecognized preset mode: %s", self._name, preset_mode)
+            return
+
+        self._preset_mode = preset_mode
+        if preset_mode in self._target_temp_map:
+            self._target_temp = self._target_temp_map[preset_mode]
+        elif PRESET_NONE in self._target_temp_map:
+            self._target_temp = self._target_temp_map[PRESET_NONE]
+            self._target_temp_map[preset_mode] = self._target_temp
+        else:
+            # Shouldn't happen but default to current temp
+            self._target_temp_map[preset_mode] = self._target_temp
+        _LOGGER.error("climate.%s - Preset mode now: %s; target temp is now %s", self._name, preset_mode, self._target_temp)
+        await self.control_system_mode()
+        await self.async_update_ha_state()
 
     async def _async_sensor_changed(self, event):
         """Handle temperature changes."""
@@ -784,6 +820,16 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         return self._supported_fan_modes
 
     @property
+    def preset_mode(self):
+        """Return the current preset mode."""
+        return self._preset_mode
+
+    @property
+    def preset_modes(self):
+        """Return the list of supported preset modes."""
+        return self._supported_preset_modes
+
+    @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
 
@@ -803,5 +849,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
 
         attributes[ATTR_VENT_SWITCH_IDS] = self.vent_switch_entity_ids
         attributes[ATTR_SENSOR_ID] = self.sensor_entity_id
+        attributes[ATTR_PRESET_TEMPERATURES] = self._target_temp_map
 
         return attributes
