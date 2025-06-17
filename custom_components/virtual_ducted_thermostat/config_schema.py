@@ -1,9 +1,6 @@
 import voluptuous as vol
 import logging
 import homeassistant.helpers.config_validation as cv
-from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE
-)
 from homeassistant.const import CONF_NAME, CONF_ENTITIES
 from .const import (
     DOMAIN,

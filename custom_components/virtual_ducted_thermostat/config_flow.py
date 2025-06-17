@@ -21,7 +21,7 @@ from .const import (
 from .config_schema import (
     get_config_flow_schema,
     CONF_VENT_SWITCH,
-    CONF_SENSOR,
+    CONF_ZONE_SENSOR,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TOLERANCE,
@@ -269,7 +269,7 @@ def are_first_step_data_valid(self, user_input) -> bool:
     if not are_entities_valid(self, user_input[CONF_VENT_SWITCH]):
         self._errors["base"]="vent switch wrong"
         return False
-    if not are_entities_valid(self, user_input[CONF_SENSOR]):
+    if not are_entities_valid(self, user_input[CONF_ZONE_SENSOR]):
         self._errors["base"]="sensor wrong"
         return False
     return True
