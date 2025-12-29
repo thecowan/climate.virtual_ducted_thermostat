@@ -1,16 +1,20 @@
-# PROGRAMMABLE THERMOSTAT
-This component is a revision of the official Home Assistant component 'Generic Thermostat' to have the possibility to have the target temperature vary according to a sensor state value.
+# VIRTUAL DUCTED THERMOSTAT
+This component takes an existing Home Assistant `climate` entity and a number of `switch` entities representing A/C vents with a corresponding number of `sensor` entities providing temperature readings, and creates a number of virtual `climate` entities representing different rooms/areas. It then coordinates between the virtual entities to control the underlying 'real' entity (for example, if the "Bedroom" temperature sensor indicates that the "Bedroom" virtual climate, in cooling mode, needs to lower the temperature, then it will turn on the underlying 'real' climate entity (if it's off), open the "Bedroom" vent switch, and run until temperature is in range, then close the vent (and shut down the 'real' entity if that was the last vent open.
 
 ## HOW TO INSTALL
-Use HACS to install the custom component and configure it through the user interface (settings/integration) to have easy and smooth usage.
+**Currently unsupported**: ~~Use HACS to install the custom component and configure it through the user interface (settings/integration) to have easy and smooth usage.~~
 
 If you are for the manual method:
-Just copy paste the content of the `climate.programmable_thermostat/custom_components` folder in your `config/custom_components` directory.
+Just copy paste the content of the `climate.virtual_ducted_thermostat/custom_components` folder in your `config/custom_components` directory.
 
-For example, you will get the '.py' file in the following path: `/config/custom_components/programmable_thermostat/climate.py`.
+For example, you will get the '.py' file in the following path: `/config/custom_components/virtual_ducted_thermostat/climate.py`.
 
 ## EXAMPLE OF SETUP
 Config flow is available, so just configure all the entities you want through the user interface.
+
+**BELOW INFORMATION IS NOT CORRECT, NEED TO UPDATE** 
+
+**TODO(thecowan)**: update this
 
 Here below the example of manual setup of sensor and parameters to configure.
 ```yaml
@@ -55,25 +59,12 @@ min_cycle_duration |  | Optional | TIMEDELTA type. This will allow protecting de
 `target_temp_sensor` is the Home Assistant `entity_id` of a sensor which' state change accordingly a specified temperature profile. This temperature profile should describe the desired temperature for the room each day/hour.
 `target_temp_sensor` must have a temperature value (a number with or without decimal) as a state.
 
-Suggestion: use my [`file_restore`][1] custom components.
-
 ### ADDITIONAL INFO
 The programmed temperature will change accordingly to the one set by the `target_temp_sensor` when in `heat_cool` mode. You can still change it temporarily with the slider. Target temperature will be set, again, to the one of `target_temp_sensor` at its first change.
 `heat` and `cool` modes are the manual mode; in this mode, the planning will not be followed.
 
 After a restart of Home Assistant, room temperature and planned room temperature will match till `actual_temp_sensor` will return a temperature value.
 This is done to avoid possible issues with Homekit support with a temperature sensor that needs some time to sync with Home Assistant.
-
-### RELATED CLIMATE
-This field is used if the climate-to-climate objects are related to each other, for example, if they use the same heater.
-Set this field with the `entity_id` with a different climate object and this will prevent the heater/cooler to be turned off by the slavery climate if the master one is active.
-
-For example, I have two climate objects, one for the room and one for the boiler.
-The boiler's climate is used to prevent freezing and, if the temperature is lower than the programmed one, the room heater is turned on.
-This means that, if the room's heater is on and the boiler's heater is off, the boiler will turn off the heater despite the room climate demands heat.
-With this `master_climate` field this unwanted turn-off will not happen.
-
-Note: my suggestion is to set it to both climates that are related to each other.
 
 ### HVAC OPTIONS
 This parameter allows you to define which mode you want to activate for that climate object. This is a number with a meaning of every single bit. Here below the table.
@@ -94,20 +85,11 @@ From version 7.6 you will be able to set `heaters` and `coolers` to the same lis
 This means that `heat` and `cool` mode will work correctly with the same list, but `heat_cool` mode will not (otherwise you will not be able to switch the real device between the 2 modes).
 My suggestion is to set `hvac_options: 3` to remove the auto mode.
 
-## NOTE
-This component has been developed for the bigger project of building a smart thermostat using Home Assistant and way cheaper than the commercial ones.
-You can find more info on that [here][3]
-
 ***
-Everything is available through HACS.
+~~Everything is available through HACS.~~
 
 ##### CREDITS
+
+The original code for this project is a fork of MapoDan's [Programmable Thermostat](https://github.com/custom-components/climate.programmable_thermostat). Thanks MapoDan for making this project so much easier!
+
 Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
-
-***
-![logo][2]
-
-
-[1]: https://github.com/custom-components/sensor.file_restore
-[2]: https://github.com/MapoDan/home-assistant/blob/master/mapodanlogo.png
-[3]: https://github.com/MapoDan/home-assistant
