@@ -28,7 +28,7 @@ climate:
       - away
     max_temp: 30
     min_temp: 10
-    initial_hvac_mode: COOL
+    initial_hvac_mode: cool
     zone:
       - name: "Bedroom"
         vent_switch: switch.daikin_ac_bedroom
@@ -48,28 +48,42 @@ climate:
         auto_mode: all
 ```
 
+### Top-level config
+
+Field | Value | Necessity | Comments
+--- | --- | --- | ---
+platform | `virtual_ducted_thermostat` | *Required* |
+central_climate |   | *Required* | Underlying central climate entity that will be controlled to direct temperature to each zone.
+zone |   | *Required* | List of `zone` structures (see next section) for each individual virtual zone within the system.
+name | Virtual Ducted Thermostat | Optional |
+min_temp | 5 | Optional | Minimum temperature manually selectable.
+max_temp | 40 | Optional | Maximum temperature manually selectable.
+tolerance | 0.5 | Optional | Tolerance for turning on and off the switches.
+parasitic_tolerance |  | Optional | A different tolerance to use if another zone is on. For example, a 0.5 degree tolerance on a 20-degree cooling setpoint won't open the vent until the temperature reaches 20.5; if `parasitic_tolerance` is set to 0.3, then that means the zone will be willing to open the vent at only 20.3 degrees. This tries to reduce cycle churn, where Zone A turns on, cools, turns off, and zone B then turns on soon after, by 'encouraging' zones to operate in parallel.
+auto_mode | `all`, `heating`, `cooling` | Optional | This allows limiting the heating/cooling function with HVAC mode HEAT_COOL.
+min_cycle_duration |  | Optional | TIMEDELTA type. This will allow protecting devices that request a minimum type of work/rest before changing status. On this, you have to define hours, minutes and/or seconds as son elements.
+initial_hvac_mode | `heat_cool`, `heat`, `cool`, `off` | Optional | If not set, components will restore old state after restart. I suggest not to use it.
+preset_mode | (none) | Optional | A list of preset modes that the entities should expose.
+
+### Per-zone config
+
+Field | Value | Necessity | Comments
+--- | --- | --- | ---
+name |  | *Required* |
+vent_switch |  | *Required* | The entity ID of the underlying `switch` which needs to open/close to enable this zone.
+temp_sensor |  | *Required* | The entity ID of a `sensor` which indicates the current temperature in the zone.
+humidity_sensor |  | Optional | The entity ID of a `sensor` which indicates the current humidity in the zone. Will simply be passed through (e.g. exposed as the humidity of the climate entity created) if supplied.
+unique_id |  | Optional | Unique per-device, allows customisation of the climate entity in the Home Assistant UI.
+min_temp | | Optional | Overrides the global default (see previous section)
+max_temp | | Optional | Overrides the global default (see previous section)
+tolerance | | Optional | Overrides the global default (see previous section)
+parasitic_tolerance |  | Optional | Overrides the global default (see previous section)
+auto_mode |  | Optional | Overrides the global default (see previous section)
 
 **BELOW INFORMATION IS NOT CORRECT, NEED TO UPDATE** 
 
 **TODO(thecowan)**: update this
-
-
-Field | Value | Necessity | Comments
---- | --- | --- | ---
-platform | `programmable_thermostat` | *Required* |
-name| Programmable Thermostat | Optional |
-heater |  | *Conditional* | Switch that will activate/deactivate the heating system. This can be a single entity or a list of entities. At least one between `heater` and `cooler` has to be defined.
-cooler |  | *Conditional* | Switch that will activate/deactivate the cooling system.  This can be a single entity or a list of entities. At least one between `heater` and `cooler` has to be defined.
-actual_temp_sensor |  | *Required* | Sensor of actual room temperature.
-min_temp | 5 | Optional | Minimum temperature manually selectable.
-max_temp | 40 | Optional | Maximum temperature manually selectable.
-target_temp_sensor |  | *Required* | Sensor that represent the desired temperature for the room. Suggestion: use my [`file_restore`][1] component or something similar.
-tolerance | 0.5 | Optional | Tolerance for turn on and off the switches mode.
-initial_hvac_mode | `heat_cool`, `heat`, `cool`, `off` | Optional | If not set, components will restore old state after restart. I suggest not to use it.
-related_climate |  | Optional | To be used if the climate object is a slave of another one. below 'Related climate' chapter a description.
-hvac_options | 7 | Optional | This defines which combination of manual-auto-off options you want to activate. Refer to the chapter below for the value.
-auto_mode | `all`, `heating`, `cooling` | Optional | This allows limiting the heating/cooling function with HVAC mode HEAT_COOL.
-min_cycle_duration |  | Optional | TIMEDELTA type. This will allow protecting devices that request a minimum type of work/rest before changing status. On this, you have to define hours, minutes and/or seconds as son elements.
+    
 
 ## SPECIFICITIES
 ### TARGET TEMPERATURE SENSOR
