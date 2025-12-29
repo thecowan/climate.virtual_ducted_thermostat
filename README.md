@@ -12,30 +12,47 @@ For example, you will get the '.py' file in the following path: `/config/custom_
 ## EXAMPLE OF SETUP
 Config flow is available, so just configure all the entities you want through the user interface.
 
+Here is a reasonably comprehensive example of manual setup of sensor and possible parameters to configure.
+```yaml
+climate:
+  - platform: virtual_ducted_thermostat
+    name: Virtual Climate Controller
+    central_climate: climate.daikin_ac
+    tolerance: 0.5
+    parasitic_tolerance: 0.3
+    auto_mode: all
+    min_cycle_duration:
+      minutes: 1
+    preset_modes:
+      - sleep
+      - away
+    max_temp: 30
+    min_temp: 10
+    initial_hvac_mode: COOL
+    zone:
+      - name: "Bedroom"
+        vent_switch: switch.daikin_ac_bedroom
+        temp_sensor: sensor.bedroom_temperature
+        humidity_sensor: sensor.bedroom_humidity
+        unique_id: vdt_daikin_ac_bedroom
+      - name: "Living Room"
+        vent_switch: switch.daikin_ac_living
+        temp_sensor: sensor.living_room_temperature
+        humidity_sensor: sensor.living_room_humidity
+        unique_id: vdt_daikin_ac_living
+        # The below allow a single zone to override the defaults specified at the level above.
+        max_temp: 25 
+        min_temp: 15
+        tolerance: 1.5
+        parasitic_tolerance: 1.0
+        auto_mode: all
+```
+
+
 **BELOW INFORMATION IS NOT CORRECT, NEED TO UPDATE** 
 
 **TODO(thecowan)**: update this
 
-Here below the example of manual setup of sensor and parameters to configure.
-```yaml
-climate:
-  - platform: programmable_thermostat
-    name: room
-    heater: 
-      - switch.riscaldamento_1
-      - switch.riscaldamento_2
-    cooler: switch.condizionamento
-    actual_temp_sensor: sensor.target_temperature
-    min_temp: 10
-    max_temp: 30
-    target_temp_sensor: sensor.program_temperature
-    tolerance: 0.3
-    related_climate: climate.room_2
-    hvac_options: 7
-    auto_mode: all
-    min_cycle_duration:
-      seconds: 20
-```
 
 Field | Value | Necessity | Comments
 --- | --- | --- | ---
