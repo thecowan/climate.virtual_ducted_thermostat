@@ -657,6 +657,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
                 _LOGGER.debug("climate.%s - I was in mode %s, but switch %s has been closed - turning myself off", self._name, self._hvac_mode, event.data['entity_id'])
                 self._hvac_mode = HVACMode.OFF
                 await self.control_system_mode()
+        else:
+            _LOGGER.debug("climate.%s - I was in mode %s, don't know what to do with that state so remaining as-is", self._name, self._hvac_mode)
 
 
         self.async_write_ha_state()
@@ -697,6 +699,8 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         elif (central_state == HVACMode.OFF):
           # TODO - determine if it turned off manually or because of us
           _LOGGER.debug("climate.%s - central turned off, but I'll stay running", self._name)
+        elif (central_state == STATE_UNAVAILABLE or central_state == STATE_UNKNOWN):
+          _LOGGER.debug("climate.%s - central went to rogue state %s, I'll stay as-is for now", self._name, central_state)
         else:
           _LOGGER.debug("climate.%s - Guess I'll turn myself off", self._name)
           await self.async_set_hvac_mode(HVACMode.OFF)
