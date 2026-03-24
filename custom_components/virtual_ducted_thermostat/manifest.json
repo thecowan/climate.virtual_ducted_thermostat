@@ -4,7 +4,8 @@
   "documentation": "https://github.com/thecowan/climate.virtual_ducted_thermostat",
   "dependencies": [
     "sensor",
-    "switch"
+    "switch",
+    "climate"
   ],
   "codeowners": [],
   "requirements": [],

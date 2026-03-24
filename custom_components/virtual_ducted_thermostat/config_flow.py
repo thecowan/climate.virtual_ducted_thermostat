@@ -25,6 +25,7 @@ from .config_schema import (
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     CONF_TOLERANCE,
+    CONF_PARASITIC_TOLERANCE,
     CONF_CENTRAL_CLIMATE,
     CONF_MIN_CYCLE_DURATION
 )
@@ -60,9 +61,10 @@ class VirtualDuctedThermostatConfigFlow(config_entries.ConfigFlow):
         if user_input is not None:
             if are_first_step_data_valid(self, user_input):
                 self._data.update(user_input)
-                self._data[CONF_VENT_SWITCH] = string_to_list(self._data[CONF_VENT_SWITCH])
-                _LOGGER.info("First input data are valid. Proceed with second step. %s", self._data)
-                return await self.async_step_second()
+                # TODO(thecowan)self._data[CONF_VENT_SWITCH] = string_to_list(self._data[CONF_VENT_SWITCH])
+                #self._data[CONF_CENTRAL_CLIMATE] = string_to_list(self._data[CONF_NAME])
+                _LOGGER.info("First input data are valid. Proceed with temperature step. %s", self._data)
+                return await self.async_step_temperatures()
             _LOGGER.warning("Wrong data have been input in the first form")
             return await self._show_config_form_first(user_input)
         return await self._show_config_form_first(user_input)
@@ -78,54 +80,54 @@ class VirtualDuctedThermostatConfigFlow(config_entries.ConfigFlow):
         )
 
     """ SECOND CONFIG FLOW STEP """
-    async def async_step_second(self, user_input={}):
-        """User proceed on the second step config flow."""
+    async def async_step_temperatures(self, user_input={}):
+        """User proceed on the temperature step config flow."""
         self._errors = {}
         if user_input is not None and user_input != {}:
-            if are_second_step_data_valid(self, user_input):
+            if are_temperature_step_data_valid(self, user_input):
                 self._data.update(user_input)
-                _LOGGER.info("Second input data are valid. Proceed with final step.")
-                return await self.async_step_final()
-            _LOGGER.warning("Wrong data have been input in the second form")
-            return await self._show_config_form_second(user_input)
-        return await self._show_config_form_second(user_input)
+                _LOGGER.info("Second input data are valid. Proceed with options step.")
+                return await self.async_step_options()
+            _LOGGER.warning("Wrong data have been input in the temperature form")
+            return await self._show_config_form_temperatures(user_input)
+        return await self._show_config_form_temperatures(user_input)
 
     """ SHOW SECOND FORM """
-    async def _show_config_form_second(self, user_input):
+    async def _show_config_form_temperatures(self, user_input):
         """ Show form for config flow """
-        _LOGGER.info("Show second form")
+        _LOGGER.info("Show temperature form")
         return self.async_show_form(
-            step_id="second",
+            step_id="temperatures",
             data_schema=vol.Schema(get_config_flow_schema(user_input, 2)),
             errors=self._errors
         )
 
     """ LAST CONFIG FLOW STEP """
-    async def async_step_final(self, user_input={}):
+    async def async_step_options(self, user_input={}):
         """User initiated config flow."""
         self._errors = {}
         if user_input is not None and user_input != {}:
-            if are_third_step_data_valid(self, user_input):
+            if are_options_step_data_valid(self, user_input):
                 self._data.update(user_input)
                 self._data[CONF_MIN_CYCLE_DURATION] = string_to_timedelta(self._data[CONF_MIN_CYCLE_DURATION])
-                final_data = {}
+                options_data = {}
                 for key in self._data.keys():
                     if self._data[key] != "" and self._data[key] != []:
-                        final_data.update({key: self._data[key]})
-                _LOGGER.info("Data are valid. Proceed with entity creation. - %s", final_data)
+                        options_data.update({key: self._data[key]})
+                _LOGGER.info("Data are valid. Proceed with entity creation. - %s", options_data)
                 await self.async_set_unique_id(self._unique_id)
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=final_data["name"], data=final_data)
+                return self.async_create_entry(title=options_data["name"], data=options_data)
             _LOGGER.warning("Wrong data have been input in the last form")
-            return await self._show_config_form_final(user_input)
-        return await self._show_config_form_final(user_input)
+            return await self._show_config_form_options(user_input)
+        return await self._show_config_form_options(user_input)
 
     """ SHOW LAST FORM """
-    async def _show_config_form_final(self, user_input):
+    async def _show_config_form_options(self, user_input):
         """ Show form for config flow """
-        _LOGGER.info("Show final form")
+        _LOGGER.info("Show options form")
         return self.async_show_form(
-            step_id="final",
+            step_id="options",
             data_schema=vol.Schema(get_config_flow_schema(user_input, 3)),
             errors=self._errors
         )
@@ -175,8 +177,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if are_first_step_data_valid(self, user_input):
                 self._data = null_data_cleaner(self._data, user_input)
                 self._data[CONF_VENT_SWITCH] = string_to_list(self._data[CONF_VENT_SWITCH])
-                _LOGGER.info("First input data are valid. Proceed with second step. %s", self._data)
-                return await self.async_step_second()
+                _LOGGER.info("First input data are valid. Proceed with temperature step. %s", self._data)
+                return await self.async_step_temperatures()
             _LOGGER.warning("Wrong data have been input in the first form")
             return await self._show_config_form_first(user_input)
         return await self._show_config_form_first(user_input)
@@ -195,58 +197,58 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     """ SECOND CONFIG FLOW STEP """
-    async def async_step_second(self, user_input={}):
-        """User proceed on the second step config flow."""
+    async def async_step_temperatures(self, user_input={}):
+        """User proceed on the temperature step config flow."""
         self._errors = {}
         if user_input is not None and user_input != {}:
-            if are_second_step_data_valid(self, user_input):
+            if are_temperatures_step_data_valid(self, user_input):
                 self._data = null_data_cleaner(self._data, user_input)
-                _LOGGER.info("Second input data are valid. Proceed with final step.")
-                return await self.async_step_final()
-            _LOGGER.warning("Wrong data have been input in the second form")
-            return await self._show_config_form_second(user_input)
-        return await self._show_config_form_second(user_input)
+                _LOGGER.info("Second input data are valid. Proceed with options step.")
+                return await self.async_step_options()
+            _LOGGER.warning("Wrong data have been input in the temperature form")
+            return await self._show_config_form_temperatures(user_input)
+        return await self._show_config_form_temperatures(user_input)
 
     """ SHOW SECOND FORM """
-    async def _show_config_form_second(self, user_input):
+    async def _show_config_form_temperatures(self, user_input):
         """ Show form for config flow """
-        _LOGGER.info("Show second form")
+        _LOGGER.info("Show temperature form")
         if user_input is None or user_input == {}:
             user_input = self._data
         return self.async_show_form(
-            step_id="second",
+            step_id="temperatures",
             data_schema=vol.Schema(get_config_flow_schema(user_input, 2)),
             errors=self._errors
         )
 
     """ LAST CONFIG FLOW STEP """
-    async def async_step_final(self, user_input={}):
+    async def async_step_options(self, user_input={}):
         """User initiated config flow."""
         self._errors = {}
         if user_input is not None and user_input != {}:
-            if are_third_step_data_valid(self, user_input):
+            if are_options_step_data_valid(self, user_input):
                 self._data = null_data_cleaner(self._data, user_input)
                 self._data[CONF_MIN_CYCLE_DURATION] = string_to_timedelta(self._data[CONF_MIN_CYCLE_DURATION])
-                final_data = {}
+                options_data = {}
                 for key in self._data.keys():
                     if self._data[key] != "" and self._data[key] != []:
-                        final_data.update({key: self._data[key]})
-                _LOGGER.debug("Data are valid. Proceed with entity creation. - %s", final_data)
-                return self.async_create_entry(title="", data=final_data)
-                #return self.hass.config_entries.async_update_entry(self, entry=self.config_entry, data=final_data, unique_id=self.config_entry.unique_id)
+                        options_data.update({key: self._data[key]})
+                _LOGGER.debug("Data are valid. Proceed with entity creation. - %s", options_data)
+                return self.async_create_entry(title="", data=options_data)
+                #return self.hass.config_entries.async_update_entry(self, entry=self.config_entry, data=options_data, unique_id=self.config_entry.unique_id)
             _LOGGER.warning("Wrong data have been input in the last form")
-            return await self._show_config_form_final(user_input)
-        return await self._show_config_form_final(user_input)
+            return await self._show_config_form_options(user_input)
+        return await self._show_config_form_options(user_input)
 
     """ SHOW LAST FORM """
-    async def _show_config_form_final(self, user_input):
+    async def _show_config_form_options(self, user_input):
         """ Show form for config flow """
-        _LOGGER.info("Show final form")
+        _LOGGER.info("Show options form")
         if user_input is None or user_input == {}:
             user_input = self._data
         #5 is necessary for options. Check config_schema.py for explanations.
         return self.async_show_form(
-            step_id="final",
+            step_id="options",
             data_schema=vol.Schema(get_config_flow_schema(user_input, 5)),
             errors=self._errors
         )
@@ -266,16 +268,13 @@ class EmptyOptions(config_entries.OptionsFlow):
 #####################################################
 def are_first_step_data_valid(self, user_input) -> bool:
     _LOGGER.debug("entered in data validation first")
-    if not are_entities_valid(self, user_input[CONF_VENT_SWITCH]):
-        self._errors["base"]="vent switch wrong"
-        return False
-    if not are_entities_valid(self, user_input[CONF_ZONE_SENSOR]):
-        self._errors["base"]="sensor wrong"
+    if not are_entities_valid(self, user_input[CONF_CENTRAL_CLIMATE]) or not user_input[CONF_CENTRAL_CLIMATE][:8:] == "climate.":
+        self._errors["base"]="central climate wrong"
         return False
     return True
 
-def are_second_step_data_valid(self, user_input) -> bool:
-    if user_input[CONF_MIN_TEMP] == "" or user_input[CONF_MAX_TEMP] == "" or user_input[CONF_TOLERANCE] == "":
+def are_temperature_step_data_valid(self, user_input) -> bool:
+    if user_input[CONF_MIN_TEMP] == "" or user_input[CONF_MAX_TEMP] == "" or user_input[CONF_TOLERANCE] == "" or user_input[CONF_PARASITIC_TOLERANCE] == "":
         self._errors["base"]="missing_data"
         return False
     if not user_input[CONF_MIN_TEMP]<user_input[CONF_MAX_TEMP]:
@@ -284,12 +283,12 @@ def are_second_step_data_valid(self, user_input) -> bool:
     if (not user_input[CONF_TOLERANCE] > 0) or (not user_input[CONF_TOLERANCE] < abs(user_input[CONF_MIN_TEMP])):
         self._errors["base"]="tolerance"
         return False
+    if (not user_input[CONF_PARASITIC_TOLERANCE] > 0) or (not user_input[CONF_PARASITIC_TOLERANCE] < abs(user_input[CONF_TOLERANCE])):
+        self._errors["base"]="parasitic_tolerance"
+        return False
     return True
 
-def are_third_step_data_valid(self, user_input) -> bool:
-    if not are_entities_valid(self, user_input[CONF_CENTRAL_CLIMATE]) or not user_input[CONF_CENTRAL_CLIMATE][:8:] == "climate." :
-        self._errors["base"] = "central climate"
-        return False
+def are_options_step_data_valid(self, user_input) -> bool:
     if user_input[CONF_MIN_CYCLE_DURATION] != "" and user_input[CONF_MIN_CYCLE_DURATION] != "null":
         check = re.match(REGEX_STRING, user_input[CONF_MIN_CYCLE_DURATION])
         _LOGGER.debug("check: %s", check)

@@ -53,7 +53,6 @@ from .config_schema import(
     CONF_PARASITIC_TOLERANCE,
     CONF_INITIAL_HVAC_MODE,
     CONF_CENTRAL_CLIMATE,
-    CONF_AUTO_MODE,
     CONF_PRESET_MODES,
     CONF_MIN_CYCLE_DURATION,
     CONF_ZONE,
@@ -140,10 +139,6 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         if self._max_temp == None:
             self._clone_max = True
             self._max_temp = DEFAULT_MAX_TEMP
-
-        self._auto_mode = zoneconfig.get(CONF_AUTO_MODE)
-        if self._auto_mode == None:
-            self._auto_mode = config.get(CONF_AUTO_MODE)
 
         self._initial_hvac_mode = config.get(CONF_INITIAL_HVAC_MODE)
         self._hvac_list = []
@@ -323,13 +318,10 @@ class VirtualDuctedThermostat(ClimateEntity, RestoreEntity):
         elif self._hvac_mode == HVACMode.HEAT_COOL:
             _LOGGER.debug("climate.%s set to auto", self._name)
             for opmod in self._hvac_list:
-            # Check of self._auto_mode has been added to avoid cooling a room that has just been heated and vice versa
-            # LET'S PRESERVE ENERGY!
-            # If you don't want to check that you have just to set auto_mode=all
-                if opmod is HVACMode.HEAT and self._auto_mode != 'cooling':
+                if opmod is HVACMode.HEAT:
                     _LOGGER.debug("climate.%s - Entered here in heating mode", self._name)
                     await self._async_control_thermo(mode="heat")
-                if opmod is HVACMode.COOL and self._auto_mode != 'heating':
+                if opmod is HVACMode.COOL:
                     _LOGGER.debug("climate.%s - Entered here in cooling mode", self._name)
                     await self._async_control_thermo(mode="cool")
         elif self._hvac_mode == HVACMode.FAN_ONLY:

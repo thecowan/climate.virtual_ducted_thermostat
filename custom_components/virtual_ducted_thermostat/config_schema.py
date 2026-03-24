@@ -4,13 +4,12 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_NAME, CONF_ENTITIES
 from .const import (
     DOMAIN,
-    DEFAULT_TOLERANCE,
     DEFAULT_NAME,
+    DEFAULT_TOLERANCE,
+    DEFAULT_PARASITIC_TOLERANCE,
     DEFAULT_MAX_TEMP,
     DEFAULT_MIN_TEMP,
-    DEFAULT_AUTO_MODE,
     DEFAULT_MIN_CYCLE_DURATION,
-    AUTO_MODE_OPTIONS,
     INITIAL_HVAC_MODE_OPTIONS,
     INITIAL_HVAC_MODE_OPTIONS_OPTFLOW
 )
@@ -31,7 +30,6 @@ CONF_MIN_TEMP = 'min_temp'
 CONF_MAX_TEMP = 'max_temp'
 CONF_TOLERANCE = 'tolerance'
 CONF_PARASITIC_TOLERANCE = 'parasitic_tolerance'
-CONF_AUTO_MODE = 'auto_mode'
 
 # Per-zone
 CONF_VENT_SWITCH = 'vent_switch'
@@ -50,18 +48,20 @@ ZONE_SCHEMA = vol.Schema({
     vol.Optional(CONF_MAX_TEMP): vol.Coerce(float),
     vol.Optional(CONF_MIN_TEMP): vol.Coerce(float),
     vol.Optional(CONF_TOLERANCE): vol.Coerce(float),
-    vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float),
-    vol.Optional(CONF_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS)
+    vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float)
+    # vol.Optional(CONF_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS)
 })
 
 CLIMATE_SCHEMA = {
+    # Step 1
+    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+    vol.Required(CONF_CENTRAL_CLIMATE): cv.entity_id,
+    # Step 2
     vol.Optional(CONF_MAX_TEMP): vol.Coerce(float),
     vol.Optional(CONF_MIN_TEMP): vol.Coerce(float),
-    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_TOLERANCE, default=DEFAULT_TOLERANCE): vol.Coerce(float),
     vol.Optional(CONF_PARASITIC_TOLERANCE): vol.Coerce(float),
-    vol.Required(CONF_CENTRAL_CLIMATE): cv.entity_id,
-    vol.Optional(CONF_AUTO_MODE, default=DEFAULT_AUTO_MODE): vol.In(AUTO_MODE_OPTIONS),
+    # Step 2
     vol.Optional(CONF_INITIAL_HVAC_MODE): vol.In(INITIAL_HVAC_MODE_OPTIONS),
     vol.Optional(CONF_MIN_CYCLE_DURATION): cv.positive_time_period,
     vol.Optional(CONF_PRESET_MODES): vol.All(cv.ensure_list, [cv.string]),
@@ -76,14 +76,15 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
             CONF_MAX_TEMP: DEFAULT_MAX_TEMP,
             CONF_MIN_TEMP: DEFAULT_MIN_TEMP,
             CONF_TOLERANCE: DEFAULT_TOLERANCE,
+            CONF_PARASITIC_TOLERANCE: DEFAULT_PARASITIC_TOLERANCE,
             CONF_CENTRAL_CLIMATE: "",
-            CONF_AUTO_MODE: DEFAULT_AUTO_MODE,
             CONF_INITIAL_HVAC_MODE: "",
             CONF_MIN_CYCLE_DURATION: DEFAULT_MIN_CYCLE_DURATION
         }
     if config_flow_step==1:
         return {
-            vol.Optional(CONF_NAME, default=config.get(CONF_NAME)): str,
+            vol.Required(CONF_NAME, default=config.get(CONF_NAME)): str,
+            vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str
         }
     elif config_flow_step==4:
         #identical to step 1 but without NAME (better to not change it since it will break configuration)
@@ -94,12 +95,11 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         return {
             vol.Required(CONF_MAX_TEMP, default=config.get(CONF_MAX_TEMP)): int,
             vol.Required(CONF_MIN_TEMP, default=config.get(CONF_MIN_TEMP)): int,
-            vol.Required(CONF_TOLERANCE, default=config.get(CONF_TOLERANCE)): float
+            vol.Required(CONF_TOLERANCE, default=config.get(CONF_TOLERANCE)): float,
+            vol.Required(CONF_PARASITIC_TOLERANCE, default=config.get(CONF_PARASITIC_TOLERANCE)): float
         }
     elif config_flow_step==3:
         return {
-            vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
-            vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS),
             vol.Optional(CONF_MIN_CYCLE_DURATION, default=config.get(CONF_MIN_CYCLE_DURATION)): str
         }
@@ -107,8 +107,6 @@ def get_config_flow_schema(config: dict = {}, config_flow_step: int = 0) -> dict
         #identical to 3 but with CONF_MIN_CYCLE_DURATION converted in string from dict (necessary since it is always set as null if not used)
         #this is used for options flow only
         return {
-            vol.Required(CONF_CENTRAL_CLIMATE, default=config.get(CONF_CENTRAL_CLIMATE)): str,
-            vol.Required(CONF_AUTO_MODE, default=config.get(CONF_AUTO_MODE)): vol.In(AUTO_MODE_OPTIONS),
             vol.Optional(CONF_INITIAL_HVAC_MODE, default=config.get(CONF_INITIAL_HVAC_MODE)): vol.In(INITIAL_HVAC_MODE_OPTIONS_OPTFLOW),
             vol.Optional(CONF_MIN_CYCLE_DURATION, default=dict_to_string(config.get(CONF_MIN_CYCLE_DURATION))): str
         }

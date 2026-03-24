@@ -20,7 +20,6 @@ climate:
     central_climate: climate.daikin_ac
     tolerance: 0.5
     parasitic_tolerance: 0.3
-    auto_mode: all
     min_cycle_duration:
       minutes: 1
     preset_modes:
@@ -45,7 +44,6 @@ climate:
         min_temp: 15
         tolerance: 1.5
         parasitic_tolerance: 1.0
-        auto_mode: all
 ```
 
 ### Top-level config
@@ -60,7 +58,6 @@ min_temp | 5 | Optional | Minimum temperature manually selectable.
 max_temp | 40 | Optional | Maximum temperature manually selectable.
 tolerance | 0.5 | Optional | Tolerance for turning on and off the switches.
 parasitic_tolerance |  | Optional | A different tolerance to use if another zone is on. For example, a 0.5 degree tolerance on a 20-degree cooling setpoint won't open the vent until the temperature reaches 20.5; if `parasitic_tolerance` is set to 0.3, then that means the zone will be willing to open the vent at only 20.3 degrees. This tries to reduce cycle churn, where Zone A turns on, cools, turns off, and zone B then turns on soon after, by 'encouraging' zones to operate in parallel.
-auto_mode | `all`, `heating`, `cooling` | Optional | This allows limiting the heating/cooling function with HVAC mode HEAT_COOL.
 min_cycle_duration |  | Optional | TIMEDELTA type. This will allow protecting devices that request a minimum type of work/rest before changing status. On this, you have to define hours, minutes and/or seconds as son elements.
 initial_hvac_mode | `heat_cool`, `heat`, `cool`, `off` | Optional | If not set, components will restore old state after restart. I suggest not to use it.
 preset_mode | (none) | Optional | A list of preset modes that the entities should expose.
@@ -78,7 +75,6 @@ min_temp | | Optional | Overrides the global default (see previous section)
 max_temp | | Optional | Overrides the global default (see previous section)
 tolerance | | Optional | Overrides the global default (see previous section)
 parasitic_tolerance |  | Optional | Overrides the global default (see previous section)
-auto_mode |  | Optional | Overrides the global default (see previous section)
 
 **BELOW INFORMATION IS NOT CORRECT, NEED TO UPDATE** 
 
